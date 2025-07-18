@@ -97,6 +97,7 @@ app.get('/refresh_token', async (req, res) => {
 });
 
 
+
 app.get('/related-artists/:artistId', async (req, res) => {
   const artistId = req.params.artistId;
   const access_token = req.query.access_token;
