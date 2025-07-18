@@ -36,37 +36,41 @@ app.get("/login", (req, res) => {
   res.redirect(authUrl);
 });
 
-app.get('/callback', async (req, res) => {
+app.get("/callback", async (req, res) => {
   const code = req.query.code || null;
-  const state = req.query.state || null;
 
-  if (!code) {
-    return res.status(400).send('No code provided');
-  }
+  const authOptions = {
+    method: "post",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization:
+        "Basic " +
+        Buffer.from(
+          process.env.SPOTIFY_CLIENT_ID + ":" + process.env.SPOTIFY_CLIENT_SECRET
+        ).toString("base64"),
+    },
+    body: new URLSearchParams({
+      code: code,
+      redirect_uri: process.env.REDIRECT_URI,
+      grant_type: "authorization_code",
+    }),
+  };
 
   try {
-    const tokenResponse = await axios.post('https://accounts.spotify.com/api/token',
-      querystring.stringify({
-        code,
-        redirect_uri,
-        grant_type: 'authorization_code',
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: 'Basic ' + Buffer.from(client_id + ':' + client_secret).toString('base64'),
-        },
-      }
-    );
+    const tokenRes = await fetch("https://accounts.spotify.com/api/token", authOptions);
+    const tokenData = await tokenRes.json();
 
-    const { access_token, refresh_token, expires_in } = tokenResponse.data;
+    const access_token = tokenData.access_token;
+    const refresh_token = tokenData.refresh_token;
 
-    res.redirect(`${frontend_uri}/?access_token=${access_token}&refresh_token=${refresh_token}&expires_in=${expires_in}`);
-  } catch (error) {
-    console.error('Error getting tokens:', error.response?.data || error.message);
-    res.status(500).send('Failed to get access token');
+    // ✅ Redirect to your frontend with tokens OR store them
+    res.redirect(`http://localhost:3000/?access_token=${access_token}&refresh_token=${refresh_token}`);
+  } catch (err) {
+    console.error("Error in /callback:", err);
+    res.send("Callback failed 😢");
   }
 });
+
 
 app.get('/refresh_token', async (req, res) => {
   const refresh_token = req.query.refresh_token;
