@@ -39,37 +39,36 @@ app.get("/login", (req, res) => {
 app.get("/callback", async (req, res) => {
   const code = req.query.code || null;
 
+  if (!code) {
+    return res.status(400).send('No code provided');
+  }
+
   try {
-    const tokenRes = await fetch("https://accounts.spotify.com/api/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization:
-          "Basic " +
-          Buffer.from(
-            process.env.SPOTIFY_CLIENT_ID + ":" + process.env.SPOTIFY_CLIENT_SECRET
-          ).toString("base64"),
-      },
-      body: new URLSearchParams({
+    const response = await axios.post('https://accounts.spotify.com/api/token',
+      querystring.stringify({
         code: code,
         redirect_uri: process.env.REDIRECT_URI,
-        grant_type: "authorization_code",
+        grant_type: 'authorization_code',
       }),
-    });
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: 'Basic ' + Buffer.from(process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET).toString('base64'),
+        },
+      }
+    );
 
-    const tokenData = await tokenRes.json();
-
-    const access_token = tokenData.access_token;
-    const refresh_token = tokenData.refresh_token;
-
+    const { access_token, refresh_token } = response.data;
     const frontend_uri = process.env.FRONTEND_URI || 'https://vibent-hdvq.vercel.app';
 
+    // Redirect to frontend with tokens in query string
     res.redirect(`${frontend_uri}/?access_token=${access_token}&refresh_token=${refresh_token}`);
-  } catch (err) {
-    console.error("Error in /callback:", err);
-    res.send("Callback failed 😢");
+  } catch (error) {
+    console.error('Error in /callback:', error.response?.data || error.message);
+    res.status(500).send('Callback failed 😢');
   }
 });
+
 
 
 app.get('/refresh_token', async (req, res) => {
