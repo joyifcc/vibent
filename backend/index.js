@@ -24,19 +24,16 @@ function generateRandomString(length) {
   return text;
 }
 
-app.get('/login', (req, res) => {
-  const state = generateRandomString(16);
-  const scope = 'user-top-read';
+app.get("/login", (req, res) => {
+  const scope = "user-read-private user-read-email";
+  const authUrl =
+    "https://accounts.spotify.com/authorize" +
+    "?response_type=code" +
+    "&client_id=" + encodeURIComponent(process.env.SPOTIFY_CLIENT_ID) +
+    "&scope=" + encodeURIComponent(scope) +
+    "&redirect_uri=" + encodeURIComponent(process.env.REDIRECT_URI);
 
-  const params = querystring.stringify({
-    response_type: 'code',
-    client_id,
-    scope,
-    redirect_uri,
-    state,
-  });
-
-  res.redirect(`https://accounts.spotify.com/authorize?${params}`);
+  res.redirect(authUrl);
 });
 
 app.get('/callback', async (req, res) => {
