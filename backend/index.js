@@ -24,17 +24,22 @@ function generateRandomString(length) {
   return text;
 }
 
-app.get("/login", (req, res) => {
-  const scope = "user-read-private user-read-email";
-  const authUrl =
-    "https://accounts.spotify.com/authorize" +
-    "?response_type=code" +
-    "&client_id=" + encodeURIComponent(process.env.SPOTIFY_CLIENT_ID) +
-    "&scope=" + encodeURIComponent(scope) +
-    "&redirect_uri=" + encodeURIComponent(process.env.REDIRECT_URI);
+app.get('/login', (req, res) => {
+  const scope = 'user-read-private user-read-email user-top-read';
 
+  const authQueryParams = new URLSearchParams({
+    response_type: 'code',
+    client_id: client_id,
+    scope: scope,
+    redirect_uri: redirect_uri,
+  });
+
+  const authUrl = `https://accounts.spotify.com/authorize?${authQueryParams.toString()}`;
+
+  console.log('Redirecting to:', authUrl); // Add logging
   res.redirect(authUrl);
 });
+
 
 app.get("/callback", async (req, res) => {
   const code = req.query.code || null;
