@@ -91,20 +91,23 @@ function App() {
   return (
     <div style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}>
       {!token ? (
-        <a
-        href={`${BACKEND_URL}/login`}
+        <button
+        onClick={() => {
+          window.location.href = `${BACKEND_URL}/login`;
+        }}
         style={{
           padding: '10px 20px',
           backgroundColor: '#1DB954',
           color: 'white',
           borderRadius: 25,
-          textDecoration: 'none',
           fontWeight: 'bold',
-          display: 'inline-block',
+          border: 'none',
+          cursor: 'pointer',
         }}
       >
         Login with Spotify
-      </a>
+      </button>
+      
       ) : (
         <>
           <h1>Your Top Spotify Artists</h1>
