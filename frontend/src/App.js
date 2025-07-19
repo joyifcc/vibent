@@ -123,66 +123,111 @@ function App() {
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: 'Arial, sans-serif' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      background: 'linear-gradient(to bottom, #191414, #1DB954)',
+      fontFamily: 'Arial, sans-serif',
+      color: 'white'
+    }}>
       {!token ? (
-        <div>
-          <h1>Welcome to Vibent</h1>
-          <p>Discover your music taste and find related artists</p>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          <button
-            onClick={handleLoginClick}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#1DB954',
-              color: 'white',
-              borderRadius: 25,
-              fontWeight: 'bold',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Login with Spotify
-          </button>
-        </div>
-      ) : (
-        <>
-          <h1>Your Top Spotify Artists</h1>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          {loading ? (
-            <p>Loading your top artists...</p>
-          ) : (
-            <ul style={{ paddingLeft: 0, listStyle: 'none' }}>
-              {topArtists.map(artist => (
-                <li key={artist.id} style={{ marginBottom: 8 }}>
-                  <button
-                    onClick={() => setSelectedArtistId(artist.id)}
-                    style={{
-                      cursor: 'pointer',
-                      fontWeight: selectedArtistId === artist.id ? 'bold' : 'normal',
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      fontSize: '1em',
-                      fontFamily: 'inherit',
-                      color: 'blue',
-                      textDecoration: 'underline',
-                    }}
-                    aria-pressed={selectedArtistId === artist.id}
-                  >
-                    {artist.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+        <a
+          href={`${BACKEND_URL}/login`}
+          style={{
+            padding: '15px 30px',
+            backgroundColor: '#1DB954',
+            color: '#fff',
+            borderRadius: '50px',
+            textDecoration: 'none',
+            fontSize: '1.2rem',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+          onMouseOver={(e) => e.target.style.opacity = 0.85}
+          onMouseOut={(e) => e.target.style.opacity = 1}
+        >
+          Login with Spotify
+        </a>
+  ) : (
+    <>
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '40px 20px',
+    backgroundColor: '#121212',
+    minHeight: '100vh',
+    color: '#fff',
+    fontFamily: 'Helvetica, Arial, sans-serif'
+  }}>
+    <h1 style={{
+      fontSize: '2rem',
+      marginBottom: '30px',
+      borderBottom: '2px solid #1DB954',
+      paddingBottom: '10px',
+      textAlign: 'center'
+    }}>
+      Your Top Spotify Artists
+    </h1>
 
-          {selectedArtistId && (
-            <RelatedArtists artistId={selectedArtistId} accessToken={token} />
-          )}
-        </>
-      )}
-    </div>
+    <ul style={{
+      listStyle: 'none',
+      padding: 0,
+      width: '100%',
+      maxWidth: '700px',
+    }}>
+      {topArtists.map((artist, index) => (
+        <li key={index} style={{
+          background: '#1e1e1e',
+          borderRadius: '16px',
+          margin: '15px 0',
+          padding: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'pointer'
+        }}
+          onMouseOver={e => {
+            e.currentTarget.style.transform = 'scale(1.02)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+          }}
+        >
+          <img
+            src={artist.images?.[0]?.url}
+            alt={artist.name}
+            style={{
+              width: '70px',
+              height: '70px',
+              borderRadius: '12px',
+              objectFit: 'cover'
+            }}
+          />
+          <div>
+            <h3 style={{ margin: '0 0 6px', fontSize: '1.2rem' }}>{artist.name}</h3>
+            <p style={{ margin: 0, color: '#a7a7a7', fontSize: '0.95rem' }}>
+              Popularity: {artist.popularity}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</>
+
+  )}
+</div>
   );
+  
 }
 
 export default App;
