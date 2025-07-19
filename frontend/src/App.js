@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import RelatedArtists from './RelatedArtists';
+import { useCallback } from 'react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
