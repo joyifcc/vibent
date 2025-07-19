@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import RelatedArtists from './RelatedArtists';
 
-// Add a fallback URL for development or if env var isn't set
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://your-backend-url.onrender.com';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
 function App() {
   const [token, setToken] = useState(null);
@@ -15,6 +14,7 @@ function App() {
 
   // Parse tokens from URL params on load
   useEffect(() => {
+    console.log("App mounted, checking for tokens in URL");
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
     const rToken = params.get('refresh_token');
@@ -24,7 +24,9 @@ function App() {
       console.log("Token received from URL params");
       setToken(accessToken);
       setRefreshToken(rToken);
-      setExpiresIn(Number(expires) || 3600); // Default to 1 hour if not provided
+      setExpiresIn(Number(expires) || 3600);
+      
+      // Clear the URL parameters without reloading the page
       window.history.replaceState({}, document.title, '/');
     }
   }, []);
