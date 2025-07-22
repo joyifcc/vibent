@@ -130,6 +130,31 @@ function App() {
       setRelatedLoading(true);
       setError(null); // Clear any previous errors
       
+      // Test with a known artist ID first
+      const testWithKnownArtist = async () => {
+        // Drake's Spotify ID
+        const testArtistId = "3TVXtAsR1Inumwj472S9r4";
+        
+        console.log("Testing with known artist ID (Drake)");
+        try {
+          const response = await fetch(`${BACKEND_URL}/related-artists/${testArtistId}?access_token=${token}`);
+          console.log(`Test response status: ${response.status}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`Test successful! Found ${data.artists?.length} related artists`);
+          } else {
+            console.error("Test failed with status:", response.status);
+            const errorText = await response.text();
+            console.error("Error details:", errorText);
+          }
+        } catch (err) {
+          console.error("Test failed with exception:", err);
+        }
+      };
+      
+      await testWithKnownArtist();
+      
       console.log("Fetching related artists for top artists...");
       let allRelatedArtists = [];
       
@@ -137,13 +162,30 @@ function App() {
       const artistsToProcess = topArtists.slice(0, 5);
       
       for (const artist of artistsToProcess) {
-        console.log(`Fetching related artists for ${artist.name}...`);
+        // Log the exact URL and artist ID
+        const requestUrl = `${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`;
+        console.log(`Making request to: ${requestUrl}`);
+        console.log(`Artist ID: "${artist.id}" for artist "${artist.name}"`);
+        
         try {
-          const response = await fetch(`${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`);
+          const response = await fetch(requestUrl);
+          
+          console.log(`Response status for ${artist.name}: ${response.status}`);
           
           if (!response.ok) {
-            console.error(`Failed to fetch related artists for ${artist.name}: ${response.status}`);
-            continue; // Skip this artist and try the next one
+            console.error(`Failed request for ${artist.name}. Status: ${response.status}`);
+            // Log the response body for more details
+            try {
+              const errorBody = await response.text();
+              console.error(`Error response body: ${errorBody}`);
+            } catch (e) {
+              console.error("Couldn't read error response body");
+            }
+            
+            if (response.status === 404) {
+              console.log(`No artist found with ID ${artist.id} (${artist.name}). Skipping.`);
+            }
+            continue;
           }
           
           const data = await response.json();
