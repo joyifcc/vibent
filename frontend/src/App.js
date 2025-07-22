@@ -15,19 +15,32 @@ function App() {
   const [selectedArtistId, setSelectedArtistId] = useState(null);
   const [relatedArtists, setRelatedArtists] = useState([]);
   const [showRelated, setShowRelated] = useState(false);
-  const [relatedLoading, setRelatedLoading] = useState(false); // Optional loading for related
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
+  // Parse tokens from URL params on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
     const rToken = params.get('refresh_token');
     const expires = params.get('expires_in');
+    
+    // Check for view state in URL
+    const view = params.get('view');
+    if (view === 'related') {
+      setShowRelated(true);
+    }
 
     if (accessToken) {
       setToken(accessToken);
       setRefreshToken(rToken);
       setExpiresIn(Number(expires) || 3600);
-      window.history.replaceState({}, document.title, '/');
+      
+      // Clear only the token params, preserve view param if needed
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('access_token');
+      newUrl.searchParams.delete('refresh_token');
+      newUrl.searchParams.delete('expires_in');
+      window.history.replaceState({}, document.title, newUrl.toString());
     }
   }, []);
 
@@ -127,7 +140,7 @@ function App() {
         allRelated.push(...(data.artists || []));
       }
 
-      
+      // Remove duplicates
       const uniqueMap = new Map();
       for (const artist of allRelated) {
         if (!uniqueMap.has(artist.id)) {
@@ -137,6 +150,11 @@ function App() {
 
       setRelatedArtists(Array.from(uniqueMap.values()));
       setShowRelated(true);
+      
+      // Update URL to remember the view state
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('view', 'related');
+      window.history.pushState({}, document.title, newUrl.toString());
     } catch (err) {
       console.error("Failed to fetch related artists for all top artists:", err);
     } finally {
@@ -144,7 +162,15 @@ function App() {
     }
   };
 
-  const handleBackToTop = () => setShowRelated(false);
+
+  const handleBackToTop = () => {
+    setShowRelated(false);
+    
+    // Update URL to remember the view state
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('view');
+    window.history.pushState({}, document.title, newUrl.toString());
+  };
 
   return (
     <div style={{
