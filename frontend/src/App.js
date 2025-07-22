@@ -113,8 +113,6 @@ function App() {
       .finally(() => setLoading(false));
   }, [token, refreshAccessToken]);
 
-
-
   const handleArtistSelect = (artistId) => {
     setSelectedArtistId(artistId);
   };
@@ -127,52 +125,53 @@ function App() {
     window.location.href = `${BACKEND_URL}/login`;
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const view = params.get('view');
-    
-    if (view === 'related' && token && topArtists.length > 0 && !relatedArtists.length) {
-      // We need to fetch related artists again since we lost the state on refresh
-      handleShowRelated();
-    }
-  }, [token, topArtists, relatedArtists.length]);
-  
-
-  const handleShowRelated = async () => {
+  const handleShowRelated = useCallback(async () => {
     try {
       setRelatedLoading(true);
-      const allRelated = [];
-  
-      // Limit to first 5 artists to avoid rate limiting
-      const artistsToFetch = topArtists.slice(0, 5);
+      setError(null); // Clear any previous errors
       
-      for (const artist of artistsToFetch) {
+      console.log("Fetching related artists for top artists...");
+      let allRelatedArtists = [];
+      
+      // Take only the first 5 top artists to avoid making too many requests
+      const artistsToProcess = topArtists.slice(0, 5);
+      
+      for (const artist of artistsToProcess) {
         console.log(`Fetching related artists for ${artist.name}...`);
-        const response = await fetch(`${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`);
-        
-        if (!response.ok) {
-          console.error(`Failed to fetch related artists for ${artist.name}: ${response.status}`);
-          continue;
-        }
-  
-        const data = await response.json();
-        console.log(`Got ${data.artists?.length || 0} related artists for ${artist.name}`);
-        if (data.artists && data.artists.length) {
-          allRelated.push(...data.artists);
+        try {
+          const response = await fetch(`${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`);
+          
+          if (!response.ok) {
+            console.error(`Failed to fetch related artists for ${artist.name}: ${response.status}`);
+            continue; // Skip this artist and try the next one
+          }
+          
+          const data = await response.json();
+          console.log(`Found ${data.artists?.length || 0} related artists for ${artist.name}`);
+          
+          if (data.artists && data.artists.length > 0) {
+            // Take top 3 related artists from each
+            const top3Related = data.artists.slice(0, 3);
+            allRelatedArtists = [...allRelatedArtists, ...top3Related];
+          }
+        } catch (artistError) {
+          console.error(`Error processing ${artist.name}:`, artistError);
+          // Continue to the next artist
         }
       }
-  
+      
       // Remove duplicates
-      const uniqueMap = new Map();
-      for (const artist of allRelated) {
-        if (!uniqueMap.has(artist.id)) {
-          uniqueMap.set(artist.id, artist);
+      const uniqueArtistsMap = new Map();
+      allRelatedArtists.forEach(artist => {
+        if (!uniqueArtistsMap.has(artist.id)) {
+          uniqueArtistsMap.set(artist.id, artist);
         }
-      }
-  
-      const uniqueRelated = Array.from(uniqueMap.values());
-      console.log(`Total unique related artists: ${uniqueRelated.length}`);
-      setRelatedArtists(uniqueRelated);
+      });
+      
+      const uniqueArtists = Array.from(uniqueArtistsMap.values());
+      console.log(`Total unique related artists found: ${uniqueArtists.length}`);
+      
+      setRelatedArtists(uniqueArtists);
       setShowRelated(true);
       
       // Update URL to remember the view state
@@ -180,13 +179,22 @@ function App() {
       newUrl.searchParams.set('view', 'related');
       window.history.pushState({}, document.title, newUrl.toString());
     } catch (err) {
-      console.error("Failed to fetch related artists:", err);
+      console.error("Error in handleShowRelated:", err);
       setError(`Failed to fetch related artists: ${err.message}`);
     } finally {
       setRelatedLoading(false);
     }
-  };
+  }, [token, topArtists, BACKEND_URL]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    
+    if (view === 'related' && token && topArtists.length > 0 && !relatedArtists.length) {
+      console.log("View parameter is 'related', fetching related artists...");
+      handleShowRelated();
+    }
+  }, [token, topArtists, relatedArtists.length, handleShowRelated]);
 
   const handleBackToTop = () => {
     setShowRelated(false);
