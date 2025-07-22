@@ -127,7 +127,7 @@ function App() {
     window.location.href = `${BACKEND_URL}/login`;
   };
 
-  UseEffect(() => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     
