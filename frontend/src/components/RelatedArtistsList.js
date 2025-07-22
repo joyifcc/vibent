@@ -1,17 +1,26 @@
 // src/components/RelatedArtistsList.js
 import React from 'react';
 
-const RelatedArtistsList = ({ relatedArtists }) => {
+const RelatedArtistsList = ({ relatedArtists, onBack }) => {
   if (!relatedArtists?.length) return null;
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '40px 20px',
-      backgroundColor: '#181818',
-    }}>
+    <div style={{ padding: '40px 20px', backgroundColor: '#181818' }}>
+      <button
+        onClick={onBack}
+        style={{
+          background: 'transparent',
+          border: '1px solid #1DB954',
+          color: '#1DB954',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          cursor: 'pointer'
+        }}
+      >
+        ← Back to Top Artists
+      </button>
+
       <h2 style={{
         fontSize: '1.8rem',
         marginBottom: '25px',
@@ -72,5 +81,6 @@ const RelatedArtistsList = ({ relatedArtists }) => {
     </div>
   );
 };
+
 
 export default RelatedArtistsList;

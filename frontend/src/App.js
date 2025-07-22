@@ -14,31 +14,25 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
   const [relatedArtists, setRelatedArtists] = useState([]);
+  const [showRelated, setShowRelated] = useState(false); // NEW
 
-  // Parse tokens from URL params on load
   useEffect(() => {
-    console.log("App mounted, checking for tokens in URL");
     const params = new URLSearchParams(window.location.search);
     const accessToken = params.get('access_token');
     const rToken = params.get('refresh_token');
     const expires = params.get('expires_in');
 
     if (accessToken) {
-      console.log("Token received from URL params");
       setToken(accessToken);
       setRefreshToken(rToken);
       setExpiresIn(Number(expires) || 3600);
-      
-      // Clear the URL parameters without reloading the page
       window.history.replaceState({}, document.title, '/');
     }
   }, []);
 
-  // Refresh access token before expiration
   const refreshAccessToken = useCallback(() => {
     if (!refreshToken) return;
 
-    console.log("Attempting to refresh token...");
     fetch(`${BACKEND_URL}/refresh_token?refresh_token=${refreshToken}`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
@@ -46,9 +40,7 @@ function App() {
       })
       .then(data => {
         if (data.access_token) {
-          console.log("Token refreshed successfully");
           setToken(data.access_token);
-          // Reset expiry timer to 1 hour or whatever Spotify returns (if provided)
           setExpiresIn(data.expires_in || 3600);
           setError(null);
         } else {
@@ -58,7 +50,6 @@ function App() {
       .catch((err) => {
         console.error("Token refresh failed:", err);
         setError(`Failed to refresh token: ${err.message}`);
-        // Don't clear tokens on network errors to allow retries
         if (!err.message.includes('Failed to fetch')) {
           setToken(null);
           setRefreshToken(null);
@@ -66,13 +57,10 @@ function App() {
       });
   }, [refreshToken]);
 
-  // Setup interval to refresh token 1 min before expiry
   useEffect(() => {
     if (!expiresIn || !refreshToken) return;
 
-    const refreshTime = (expiresIn - 60) * 1000; // ms
-    console.log(`Token will refresh in ${refreshTime/1000} seconds`);
-
+    const refreshTime = (expiresIn - 60) * 1000;
     const timer = setTimeout(() => {
       refreshAccessToken();
     }, refreshTime);
@@ -80,19 +68,16 @@ function App() {
     return () => clearTimeout(timer);
   }, [expiresIn, refreshToken, refreshAccessToken]);
 
-  // Fetch top artists when token changes
   useEffect(() => {
     if (!token) return;
 
     setLoading(true);
-    console.log("Fetching top artists...");
     fetch('https://api.spotify.com/v1/me/top/artists', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => {
         if (!res.ok) {
           if (res.status === 401) {
-            // Token expired, try to refresh
             refreshAccessToken();
             throw new Error('Token expired, attempting refresh');
           }
@@ -101,7 +86,6 @@ function App() {
         return res.json();
       })
       .then(data => {
-        console.log(`Received ${data.items?.length || 0} top artists`);
         setTopArtists(data.items || []);
         setError(null);
         if (data.items && data.items.length) {
@@ -115,18 +99,15 @@ function App() {
       .finally(() => setLoading(false));
   }, [token, refreshAccessToken]);
 
-  // Fetch related artists when selectedArtistId changes
   useEffect(() => {
     if (!token || !selectedArtistId) return;
 
-    console.log(`Fetching related artists for ${selectedArtistId}...`);
     fetch(`${BACKEND_URL}/related-artists/${selectedArtistId}?access_token=${token}`)
       .then(res => {
         if (!res.ok) throw new Error(`Failed to fetch related artists (${res.status})`);
         return res.json();
       })
       .then(data => {
-        console.log(`Received ${data.artists?.length || 0} related artists`);
         setRelatedArtists(data.artists || []);
       })
       .catch(err => {
@@ -136,7 +117,6 @@ function App() {
   }, [token, selectedArtistId]);
 
   const handleArtistSelect = (artistId) => {
-    console.log(`Selected artist: ${artistId}`);
     setSelectedArtistId(artistId);
   };
 
@@ -145,9 +125,11 @@ function App() {
       setError("Backend URL is not configured. Please check your environment variables.");
       return;
     }
-    console.log(`Redirecting to ${BACKEND_URL}/login`);
     window.location.href = `${BACKEND_URL}/login`;
   };
+
+  const handleShowRelated = () => setShowRelated(true);     // NEW
+  const handleBackToTop = () => setShowRelated(false);      // NEW
 
   return (
     <div style={{
@@ -164,15 +146,22 @@ function App() {
         <LoginButton onClick={handleLoginClick} backendUrl={BACKEND_URL} />
       ) : (
         <>
-          <TopArtistsList 
-            topArtists={topArtists} 
-            onArtistSelect={handleArtistSelect}
-            selectedArtistId={selectedArtistId}
-          />
-          <RelatedArtistsList relatedArtists={relatedArtists} />
+          {!showRelated ? (
+            <TopArtistsList
+              topArtists={topArtists}
+              onArtistSelect={handleArtistSelect}
+              selectedArtistId={selectedArtistId}
+              onShowRelatedArtists={handleShowRelated} // NEW
+            />
+          ) : (
+            <RelatedArtistsList
+              relatedArtists={relatedArtists}
+              onBack={handleBackToTop} // NEW
+            />
+          )}
         </>
       )}
-      
+
       {error && (
         <div style={{
           background: 'rgba(255, 0, 0, 0.2)',
@@ -185,7 +174,7 @@ function App() {
         </div>
       )}
     </div>
-  );  
+  );
 }
 
 export default App;
