@@ -127,19 +127,41 @@ function App() {
     window.location.href = `${BACKEND_URL}/login`;
   };
 
+  UseEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    
+    if (view === 'related' && token && topArtists.length > 0 && !relatedArtists.length) {
+      // We need to fetch related artists again since we lost the state on refresh
+      handleShowRelated();
+    }
+  }, [token, topArtists, relatedArtists.length]);
+  
+
   const handleShowRelated = async () => {
     try {
       setRelatedLoading(true);
       const allRelated = [];
-
-      for (const artist of topArtists) {
+  
+      // Limit to first 5 artists to avoid rate limiting
+      const artistsToFetch = topArtists.slice(0, 5);
+      
+      for (const artist of artistsToFetch) {
+        console.log(`Fetching related artists for ${artist.name}...`);
         const response = await fetch(`${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`);
-        if (!response.ok) continue;
-
+        
+        if (!response.ok) {
+          console.error(`Failed to fetch related artists for ${artist.name}: ${response.status}`);
+          continue;
+        }
+  
         const data = await response.json();
-        allRelated.push(...(data.artists || []));
+        console.log(`Got ${data.artists?.length || 0} related artists for ${artist.name}`);
+        if (data.artists && data.artists.length) {
+          allRelated.push(...data.artists);
+        }
       }
-
+  
       // Remove duplicates
       const uniqueMap = new Map();
       for (const artist of allRelated) {
@@ -147,8 +169,10 @@ function App() {
           uniqueMap.set(artist.id, artist);
         }
       }
-
-      setRelatedArtists(Array.from(uniqueMap.values()));
+  
+      const uniqueRelated = Array.from(uniqueMap.values());
+      console.log(`Total unique related artists: ${uniqueRelated.length}`);
+      setRelatedArtists(uniqueRelated);
       setShowRelated(true);
       
       // Update URL to remember the view state
@@ -156,7 +180,8 @@ function App() {
       newUrl.searchParams.set('view', 'related');
       window.history.pushState({}, document.title, newUrl.toString());
     } catch (err) {
-      console.error("Failed to fetch related artists for all top artists:", err);
+      console.error("Failed to fetch related artists:", err);
+      setError(`Failed to fetch related artists: ${err.message}`);
     } finally {
       setRelatedLoading(false);
     }
