@@ -130,33 +130,65 @@ function App() {
       setRelatedLoading(true);
       setError(null); // Clear any previous errors
       
-      // Test with a known artist ID first
-      const testWithKnownArtist = async () => {
-        // Drake's Spotify ID
-        const testArtistId = "3TVXtAsR1Inumwj472S9r4";
+      // Try direct Spotify API call first as a test
+      console.log("Testing direct Spotify API call...");
+      try {
+        const directResponse = await fetch('https://api.spotify.com/v1/artists/3TVXtAsR1Inumwj472S9r4/related-artists', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         
-        console.log("Testing with known artist ID (Drake)");
-        try {
-          const response = await fetch(`${BACKEND_URL}/related-artists/${testArtistId}?access_token=${token}`);
-          console.log(`Test response status: ${response.status}`);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`Test successful! Found ${data.artists?.length} related artists`);
-          } else {
-            console.error("Test failed with status:", response.status);
-            const errorText = await response.text();
-            console.error("Error details:", errorText);
-          }
-        } catch (err) {
-          console.error("Test failed with exception:", err);
+        console.log(`Direct Spotify API call status: ${directResponse.status}`);
+        
+        if (directResponse.ok) {
+          const directData = await directResponse.json();
+          console.log(`Direct call successful! Found ${directData.artists?.length} related artists`);
+        } else {
+          const directErrorText = await directResponse.text();
+          console.error(`Direct call failed: ${directErrorText}`);
         }
-      };
+      } catch (directErr) {
+        console.error("Direct API call failed:", directErr);
+      }
       
-      await testWithKnownArtist();
+      // Print backend URL for verification
+      console.log(`Using backend URL: ${BACKEND_URL}`);
+      
+      // Test backend root endpoint to verify connectivity
+      try {
+        const rootResponse = await fetch(`${BACKEND_URL}/`);
+        console.log(`Backend root endpoint status: ${rootResponse.status}`);
+        if (rootResponse.ok) {
+          const rootText = await rootResponse.text();
+          console.log(`Backend root response: ${rootText}`);
+        }
+      } catch (rootErr) {
+        console.error("Backend connectivity test failed:", rootErr);
+      }
+      
+      // Try with explicit encoding of the ID
+      const drakeId = encodeURIComponent("3TVXtAsR1Inumwj472S9r4");
+      console.log(`Testing with URL-encoded Drake ID: ${drakeId}`);
+      
+      try {
+        const encodedResponse = await fetch(`${BACKEND_URL}/related-artists/${drakeId}?access_token=${encodeURIComponent(token)}`);
+        console.log(`Encoded request status: ${encodedResponse.status}`);
+        
+        if (encodedResponse.ok) {
+          const encodedData = await encodedResponse.json();
+          console.log(`Encoded request successful! Found ${encodedData.artists?.length} related artists`);
+        } else {
+          const encodedErrorText = await encodedResponse.text();
+          console.error(`Encoded request failed: ${encodedErrorText}`);
+        }
+      } catch (encodedErr) {
+        console.error("Encoded request failed:", encodedErr);
+      }
       
       console.log("Fetching related artists for top artists...");
       let allRelatedArtists = [];
+      
+      // Use direct Spotify API as a fallback if backend route is failing
+      const useDirectApi = true; // Set to true to bypass your backend
       
       // Take only the first 5 top artists to avoid making too many requests
       const artistsToProcess = topArtists.slice(0, 5);
