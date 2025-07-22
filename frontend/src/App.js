@@ -14,7 +14,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [selectedArtistId, setSelectedArtistId] = useState(null);
   const [relatedArtists, setRelatedArtists] = useState([]);
-  const [showRelated, setShowRelated] = useState(false); // NEW
+  const [showRelated, setShowRelated] = useState(false);
+  const [relatedLoading, setRelatedLoading] = useState(false); // Optional loading for related
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -99,22 +100,7 @@ function App() {
       .finally(() => setLoading(false));
   }, [token, refreshAccessToken]);
 
-  useEffect(() => {
-    if (!token || !selectedArtistId) return;
 
-    fetch(`${BACKEND_URL}/related-artists/${selectedArtistId}?access_token=${token}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`Failed to fetch related artists (${res.status})`);
-        return res.json();
-      })
-      .then(data => {
-        setRelatedArtists(data.artists || []);
-      })
-      .catch(err => {
-        console.error("Error fetching related artists:", err);
-        setRelatedArtists([]);
-      });
-  }, [token, selectedArtistId]);
 
   const handleArtistSelect = (artistId) => {
     setSelectedArtistId(artistId);
@@ -128,8 +114,37 @@ function App() {
     window.location.href = `${BACKEND_URL}/login`;
   };
 
-  const handleShowRelated = () => setShowRelated(true);     // NEW
-  const handleBackToTop = () => setShowRelated(false);      // NEW
+  const handleShowRelated = async () => {
+    try {
+      setRelatedLoading(true);
+      const allRelated = [];
+
+      for (const artist of topArtists) {
+        const response = await fetch(`${BACKEND_URL}/related-artists/${artist.id}?access_token=${token}`);
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        allRelated.push(...(data.artists || []));
+      }
+
+      
+      const uniqueMap = new Map();
+      for (const artist of allRelated) {
+        if (!uniqueMap.has(artist.id)) {
+          uniqueMap.set(artist.id, artist);
+        }
+      }
+
+      setRelatedArtists(Array.from(uniqueMap.values()));
+      setShowRelated(true);
+    } catch (err) {
+      console.error("Failed to fetch related artists for all top artists:", err);
+    } finally {
+      setRelatedLoading(false);
+    }
+  };
+
+  const handleBackToTop = () => setShowRelated(false);
 
   return (
     <div style={{
@@ -151,12 +166,13 @@ function App() {
               topArtists={topArtists}
               onArtistSelect={handleArtistSelect}
               selectedArtistId={selectedArtistId}
-              onShowRelatedArtists={handleShowRelated} // NEW
+              onShowRelatedArtists={handleShowRelated}
             />
           ) : (
             <RelatedArtistsList
               relatedArtists={relatedArtists}
-              onBack={handleBackToTop} // NEW
+              onBack={handleBackToTop}
+              loading={relatedLoading}
             />
           )}
         </>
