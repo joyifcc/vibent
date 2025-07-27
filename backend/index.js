@@ -85,7 +85,8 @@ app.get('/login', (req, res) => {
     redirect_uri: redirect_uri,
   });
 
-  const authUrl = `[https://accounts.spotify.com/authorize?${authQueryParams.toString()}`](https://accounts.spotify.com/authorize?${authQueryParams.toString()}`);
+  // Fix: Remove the markdown-style formatting
+  const authUrl = `https://accounts.spotify.com/authorize?${authQueryParams.toString()}`;
 
   console.log('Redirecting to:', authUrl);
   res.redirect(authUrl);
