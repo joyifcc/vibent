@@ -3,15 +3,11 @@ const axios = require('axios');
 const querystring = require('querystring');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const NodeCache = require('node-cache'); // You'll need to install this: npm install node-cache
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-
-// Initialize cache for concerts
-const concertCache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -85,7 +81,6 @@ app.get('/login', (req, res) => {
     redirect_uri: redirect_uri,
   });
 
-  // Fix: Remove the markdown-style formatting
   const authUrl = `https://accounts.spotify.com/authorize?${authQueryParams.toString()}`;
 
   console.log('Redirecting to:', authUrl);
@@ -160,7 +155,7 @@ app.get('/refresh_token', async (req, res) => {
   }
 });
 
-// Related artists endpoint - Fix malformed URL
+// Related artists endpoint
 app.get('/related-artists/:artistId', async (req, res) => {
   const artistId = req.params.artistId;
   const access_token = req.query.access_token;
@@ -186,31 +181,7 @@ app.get('/related-artists/:artistId', async (req, res) => {
   }
 });
 
-// Login route - Fix malformed URL
-app.get('/login', (req, res) => {
-  console.log('Login route accessed');
-  
-  if (!client_id) {
-    console.error('SPOTIFY_CLIENT_ID is not defined');
-    return res.status(500).send('Server configuration error: Missing Spotify client ID');
-  }
-  
-  const scope = 'user-read-private user-read-email user-top-read';
-  
-  const authQueryParams = new URLSearchParams({
-    response_type: 'code',
-    client_id: client_id,
-    scope: scope,
-    redirect_uri: redirect_uri,
-  });
-
-  const authUrl = `https://accounts.spotify.com/authorize?${authQueryParams.toString()}`;
-
-  console.log('Redirecting to:', authUrl);
-  res.redirect(authUrl);
-});
-
-// Concerts endpoint - Fix caching variable name and optional chaining
+// Concerts endpoint without caching
 app.get('/concerts', async (req, res) => {
   try {
     // Input validation
@@ -225,14 +196,19 @@ app.get('/concerts', async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error: Missing Ticketmaster API key' });
     }
     
-    // Check cache first
-    const cacheKey = `concerts_${artistName.toLowerCase()}`;
-    const cachedData = concertCache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log(`Returning cached concerts for ${artistName}`);
-      return res.json(cachedData);
-    }
+    // Make direct API call to Ticketmaster
+    console.log(`Fetching concerts for ${artistName}`);
+    const apiUrl = 'https://app.ticketmaster.com/discovery/v2/events.json';
+    const response = await axios.get(apiUrl, {
+      params: {
+        keyword: artistName,
+        apikey: TICKETMASTER_API_KEY,
+        size: 20,
+        sort: 'date,asc',
+      },
+    });
+
+    // Process and return the data
 
     // Add the rest of the concerts endpoint logic here
     // ...
