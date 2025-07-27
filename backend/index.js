@@ -198,7 +198,7 @@ app.get('/concerts', async (req, res) => {
     
     // Make direct API call to Ticketmaster
     console.log(`Fetching concerts for ${artistName}`);
-    const apiUrl = 'https://app.ticketmaster.com/discovery/v2/events.json';
+    const apiUrl = `https://app.ticketmaster.com/discovery/v2/events.json`;
     const response = await axios.get(apiUrl, {
       params: {
         keyword: artistName,
@@ -209,11 +209,33 @@ app.get('/concerts', async (req, res) => {
     });
 
     // Process and return the data
+    const events = response.data._embedded ? response.data._embedded.events : [];
+    
+    const formattedEvents = events.map(event => ({
+      id: event.id,
+      name: event.name,
+      date: event.dates.start.localDate,
+      time: event.dates.start.localTime || null,
+      venue: event._embedded?.venues?.[0]?.name || 'Unknown Venue',
+      city: event._embedded?.venues?.[0]?.city?.name || 'Unknown City',
+      state: event._embedded?.venues?.[0]?.state?.stateCode || '',
+      country: event._embedded?.venues?.[0]?.country?.countryCode || '',
+      url: event.url,
+      images: event.images || [],
+      priceRanges: event.priceRanges || []
+    }));
 
-    // Add the rest of the concerts endpoint logic here
-    // ...
+    return res.json({ events: formattedEvents });
   } catch (error) {
-    console.error('Error fetching concerts:', error.message);
-    return res.status(500).json({ error: 'Failed to fetch concerts', details: error.message });
+    console.error('Error fetching concerts:', error.response?.data || error.message);
+    return res.status(500).json({ 
+      error: 'Failed to fetch concerts', 
+      details: error.response?.data || error.message 
+    });
   }
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
