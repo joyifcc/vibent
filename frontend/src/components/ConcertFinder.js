@@ -177,10 +177,10 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
         .loading-spinner {
           width: 40px;
           height: 40px;
-          margin: 0 auto 20px;
-          border: 4px solid rgba(255, 255, 255, 0.3);
+          margin: 0 auto;
+          border: 4px solid rgba(255, 255, 255, 0.2);
+          border-top: 4px solid #ffffff;
           border-radius: 50%;
-          border-top-color: #1DB954;
           animation: spin 1s linear infinite;
         }
         
