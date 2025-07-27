@@ -4,20 +4,25 @@ import './TopArtistsList.css';
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchConcerts = async () => {
+      setLoading(true);
       const data = {};
       for (const artist of topArtists) {
         try {
           const res = await fetch(`/api/concerts?artistName=${encodeURIComponent(artist.name)}`);
           const json = await res.json();
+          console.log(`Concert data for ${artist.name}:`, json); // Debug log
           data[artist.name] = json?.events || [];
         } catch (error) {
           console.error(`Error fetching concerts for ${artist.name}:`, error);
+          data[artist.name] = [];
         }
       }
       setConcertData(data);
+      setLoading(false);
     };
 
     if (topArtists.length > 0) {
@@ -54,13 +59,15 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
               )}
 
               {/* Concerts */}
-              {concertData[artist.name]?.length > 0 ? (
+              {loading ? (
+                <p className="loading-concerts">Loading concerts...</p>
+              ) : concertData[artist.name]?.length > 0 ? (
                 <div className="concerts">
                   <p className="concert-title">Upcoming Concerts:</p>
                   <ul className="concert-list">
                     {concertData[artist.name].slice(0, 2).map((event, i) => (
                       <li key={i} className="concert-item">
-                        {event.name} — {event.dates.start.localDate} @ {event._embedded?.venues?.[0]?.name}
+                        {event.name} — {event.date} @ {event.venue}
                       </li>
                     ))}
                   </ul>
