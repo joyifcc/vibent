@@ -327,17 +327,25 @@ const handleFindConcerts = async (artistName) => {
         <>
           {!showRelated ? (
             <TopArtistsList
-              topArtists={topArtists}
-              onArtistSelect={handleArtistSelect}
-              selectedArtistId={selectedArtistId}
-              onShowRelatedArtists={handleShowRelated}
-            />
+            topArtists={topArtists}
+            onArtistSelect={handleArtistSelect}
+            selectedArtistId={selectedArtistId}
+            onShowRelatedArtists={handleShowRelated}
+            onFindConcerts={handleFindConcerts}
+            concertResults={concertResults}
+            concertLoading={concertLoading}
+          />
+          
           ) : (
             <RelatedArtistsList
               relatedArtists={relatedArtists}
               onBack={handleBackToTop}
               loading={relatedLoading}
+              handleFindConcerts={handleFindConcerts}
+              concertResults={concertResults}
+              concertLoading={concertLoading}
             />
+
           )}
         </>
       )}
