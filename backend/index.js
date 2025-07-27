@@ -178,6 +178,42 @@ app.get('/related-artists/:artistId', async (req, res) => {
   }
 });
 
+// Concerts endpoint using Ticketmaster
+app.get('/api/concerts', async (req, res) => {
+  const artistName = req.query.artistName;
+
+  if (!artistName) {
+    return res.status(400).json({ error: 'Missing artistName query parameter' });
+  }
+
+  const tmApiKey = process.env.TICKETMASTER_API_KEY;
+
+  if (!tmApiKey) {
+    return res.status(500).json({ error: 'Ticketmaster API key not configured' });
+  }
+
+  try {
+    const response = await axios.get('https://app.ticketmaster.com/discovery/v2/events.json', {
+      params: {
+        apikey: tmApiKey,
+        keyword: artistName,
+        countryCode: 'US',
+        sort: 'date,asc',
+        size: 5
+      }
+    });
+
+    const events = response.data._embedded?.events || [];
+    res.json({ events });
+  } catch (error) {
+    console.error(`Error fetching concerts for ${artistName}:`, error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch concerts' });
+  }
+});
+
+
+
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);
