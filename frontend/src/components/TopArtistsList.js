@@ -5,22 +5,49 @@ import './TopArtistsList.css';
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchConcerts = async () => {
       setLoading(true);
+      setError(null);
       const data = {};
+      
       for (const artist of topArtists) {
         try {
-          const res = await fetch(`/api/concerts?artistName=${encodeURIComponent(artist.name)}`);
+          // Use the correct backend URL
+          const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
+          const url = `${BACKEND_URL}/concerts?artistName=${encodeURIComponent(artist.name)}`;
+          
+          console.log(`Fetching concerts from: ${url}`);
+          const res = await fetch(url);
+          
+          // Check if response is OK before parsing
+          if (!res.ok) {
+            console.error(`Error response for ${artist.name}: ${res.status} ${res.statusText}`);
+            const text = await res.text();
+            console.error(`Response body: ${text.substring(0, 200)}...`);
+            throw new Error(`API returned ${res.status}`);
+          }
+          
           const json = await res.json();
-          console.log(`Concert data for ${artist.name}:`, json); // Debug log
-          data[artist.name] = json?.events || [];
+          console.log(`Concert data for ${artist.name}:`, json);
+          
+          // Make sure we're storing the events array correctly
+          if (Array.isArray(json.events)) {
+            data[artist.name] = json.events;
+            console.log(`Stored ${json.events.length} concerts for ${artist.name}`);
+          } else {
+            console.warn(`No events array found for ${artist.name}, response:`, json);
+            data[artist.name] = [];
+          }
         } catch (error) {
           console.error(`Error fetching concerts for ${artist.name}:`, error);
           data[artist.name] = [];
         }
       }
+      
+      console.log("Final concert data:", data);
       setConcertData(data);
       setLoading(false);
     };
@@ -33,6 +60,12 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   return (
     <div className="top-artists-container">
       <h1 className="title">Your Top Spotify Artists</h1>
+      
+      {error && (
+        <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
+          Error loading concerts: {error}
+        </div>
+      )}
 
       <ul className="artist-list">
         {topArtists.map((artist, index) => (
@@ -58,10 +91,10 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                 </div>
               )}
 
-              {/* Concerts */}
+              {/* Concerts with improved handling */}
               {loading ? (
                 <p className="loading-concerts">Loading concerts...</p>
-              ) : concertData[artist.name]?.length > 0 ? (
+              ) : concertData[artist.name] && concertData[artist.name].length > 0 ? (
                 <div className="concerts">
                   <p className="concert-title">Upcoming Concerts:</p>
                   <ul className="concert-list">
@@ -73,7 +106,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                   </ul>
                 </div>
               ) : (
-                <p className="no-concerts">No concerts found</p>
+                <p className="no-concerts">
+                  No concerts found
+                  {process.env.NODE_ENV === 'development' && 
+                    ` (${concertData[artist.name] ? 'Empty array' : 'No data'})`}
+                </p>
               )}
             </div>
           </li>
