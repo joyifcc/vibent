@@ -16,18 +16,47 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
         const artistNames = artists.slice(0, 10).map(artist => artist.name);
         const concertResults = {};
         
-        // Fetch concerts for each artist individually using the existing endpoint
+        console.log("Fetching concerts for artists:", artistNames);
+        console.log("Using backend URL:", backendUrl);
+        
+        // Fetch concerts for each artist individually using the backend URL
         for (const artistName of artistNames) {
           try {
-            const response = await fetch(`/api/concerts?artistName=${encodeURIComponent(artistName)}`);
+            const url = `${backendUrl}/concerts?artistName=${encodeURIComponent(artistName)}`;
+            console.log(`Making request to: ${url}`);
+            
+            const response = await fetch(url);
+            
+            console.log(`Response status for ${artistName}: ${response.status}`);
             
             if (!response.ok) {
               console.warn(`Failed to fetch concerts for ${artistName}: ${response.status}`);
               continue; // Skip to next artist if this one fails
             }
             
-            const data = await response.json();
-            concertResults[artistName] = data.events || [];
+            // Log the raw response to debug structure
+            const text = await response.text();
+            console.log(`Raw response for ${artistName}:`, text);
+            
+            // Parse the JSON
+            const data = JSON.parse(text);
+            
+            // Adapt this based on your actual API response structure
+            // If the API returns an array directly:
+            if (Array.isArray(data)) {
+              concertResults[artistName] = data;
+            } 
+            // If the API returns an object with events property:
+            else if (data.events) {
+              concertResults[artistName] = data.events;
+            }
+            // If the API has a different structure:
+            else {
+              console.log("Unexpected data structure:", data);
+              concertResults[artistName] = [];
+            }
+            
+            console.log(`Found ${concertResults[artistName].length} concerts for ${artistName}`);
           } catch (artistError) {
             console.error(`Error fetching concerts for ${artistName}:`, artistError);
           }
@@ -41,11 +70,11 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
         setLoading(false);
       }
     };
-
-    if (artists && artists.length > 0) {
+  
+    if (artists && artists.length > 0 && backendUrl) {
       fetchConcerts();
     }
-  }, [artists]);
+  }, [artists, backendUrl]);
 
   const formatDate = (dateString) => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
