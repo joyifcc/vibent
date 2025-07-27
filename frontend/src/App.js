@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import LoginButton from './components/LoginButton';
 import TopArtistsList from './components/TopArtistsList';
 import RelatedArtistsList from './components/RelatedArtistsList';
-import ConcertFinder from './components/ConcertFinder'; // Import ConcertFinder
+import ConcertFinder from './components/ConcertFinder';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
@@ -19,47 +19,46 @@ function App() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [showConcerts, setShowConcerts] = useState(false); // Add state for concert view
 
-  // Add this at the top of your App component
-useEffect(() => {
-  // Clear URL parameters on initial load to ensure we start at the homepage
-  if (window.location.search) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-  
-  // Reset view state
-  setShowRelated(false);
-  setShowConcerts(false);
-}, []);  // Empty dependency array means this runs once on mount
 
-// Parse tokens from URL params on load
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const accessToken = params.get('access_token');
-  const rToken = params.get('refresh_token');
-  const expires = params.get('expires_in');
-  
-  // Check for view state in URL
-  const view = params.get('view');
-  if (view === 'related') {
-    setShowRelated(true);
-  } else if (view === 'concerts') {
-    setShowConcerts(true);
-  }
-
-  if (accessToken) {
-    setToken(accessToken);
-    setRefreshToken(rToken);
-    setExpiresIn(Number(expires) || 3600);
+  useEffect(() => {
+    // First, check for tokens
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get('access_token');
+    const rToken = params.get('refresh_token');
+    const expires = params.get('expires_in');
     
-    // Clear only the token params, preserve view param if needed
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.delete('access_token');
-    newUrl.searchParams.delete('refresh_token');
-    newUrl.searchParams.delete('expires_in');
-    window.history.replaceState({}, document.title, newUrl.toString());
-  }
-}, []);
-
+    // Check for view state in URL
+    const view = params.get('view');
+    if (view === 'related') {
+      setShowRelated(true);
+    } else if (view === 'concerts') {
+      setShowConcerts(true);
+    } else {
+      // Reset view state if no specific view is requested
+      setShowRelated(false);
+      setShowConcerts(false);
+    }
+  
+    if (accessToken) {
+      // Set tokens if they exist
+      setToken(accessToken);
+      setRefreshToken(rToken);
+      setExpiresIn(Number(expires) || 3600);
+      
+      // Clear only the token params, preserve view param if needed
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('access_token');
+      newUrl.searchParams.delete('refresh_token');
+      newUrl.searchParams.delete('expires_in');
+      window.history.replaceState({}, document.title, newUrl.toString());
+    } else if (window.location.search) {
+      // If no tokens but we have other params, decide if you want to clear them
+      // Only clear if there's no important state in the URL
+      if (!params.get('view')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
   const refreshAccessToken = useCallback(() => {
     if (!refreshToken) return;
 
@@ -274,7 +273,7 @@ useEffect(() => {
     } finally {
       setRelatedLoading(false);
     }
-  }, [token, topArtists, BACKEND_URL]);
+  }, [token, topArtists]);
 
   useEffect(() => {
     // Only process URL parameters if we have a token and artists loaded
@@ -291,26 +290,26 @@ useEffect(() => {
       }
     }
   }, [token, topArtists, relatedArtists.length, handleShowRelated]);
-  
-const handleShowConcerts = () => {
-  setShowConcerts(true);
-  setShowRelated(false);
-  
-  // Update URL to remember view state
-  const newUrl = new URL(window.location.href);
-  newUrl.searchParams.set('view', 'concerts');
-  window.history.pushState({}, document.title, newUrl.toString());
-};
 
-const handleBackToTop = () => {
-  setShowRelated(false);
-  setShowConcerts(false);
+  const handleShowConcerts = () => {
+    setShowConcerts(true);
+    setShowRelated(false);
+    
+    // Update URL to remember view state
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('view', 'concerts');
+    window.history.pushState({}, document.title, newUrl.toString());
+  };
   
-  // Update URL to remember the view state
-  const newUrl = new URL(window.location.href);
-  newUrl.searchParams.delete('view');
-  window.history.pushState({}, document.title, newUrl.toString());
-};
+  const handleBackToTop = () => {
+    setShowRelated(false);
+    setShowConcerts(false);
+    
+    // Update URL to remember the view state
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('view');
+    window.history.pushState({}, document.title, newUrl.toString());
+  };
 
 return (
   <div style={{
