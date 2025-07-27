@@ -1,8 +1,30 @@
 // src/components/TopArtistsList.js
-import React from 'react';
-import './TopArtistsList.css'; // External styles
+import React, { useEffect, useState } from 'react';
+import './TopArtistsList.css';
 
-const TopArtistsList = ({ topArtists, onShowRelatedArtists }) => {
+const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
+  const [concertData, setConcertData] = useState({});
+
+  useEffect(() => {
+    const fetchConcerts = async () => {
+      const data = {};
+      for (const artist of topArtists) {
+        try {
+          const res = await fetch(`/api/concerts?artistName=${encodeURIComponent(artist.name)}`);
+          const json = await res.json();
+          data[artist.name] = json?.events || [];
+        } catch (error) {
+          console.error(`Error fetching concerts for ${artist.name}:`, error);
+        }
+      }
+      setConcertData(data);
+    };
+
+    if (topArtists.length > 0) {
+      fetchConcerts();
+    }
+  }, [topArtists]);
+
   return (
     <div className="top-artists-container">
       <h1 className="title">Your Top Spotify Artists</h1>
@@ -18,6 +40,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists }) => {
             <div>
               <h3 className="artist-name">{artist.name}</h3>
               <p className="artist-popularity">Popularity: {artist.popularity}</p>
+
+              {/* Related Artists */}
               {artist.relatedArtists?.length > 0 && (
                 <div className="related-artists">
                   <p className="related-title">Related Artists:</p>
@@ -28,29 +52,69 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists }) => {
                   </ul>
                 </div>
               )}
+
+              {/* Concerts */}
+              {concertData[artist.name]?.length > 0 ? (
+                <div className="concerts">
+                  <p className="concert-title">Upcoming Concerts:</p>
+                  <ul className="concert-list">
+                    {concertData[artist.name].slice(0, 2).map((event, i) => (
+                      <li key={i} className="concert-item">
+                        {event.name} — {event.dates.start.localDate} @ {event._embedded?.venues?.[0]?.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="no-concerts">No concerts found</p>
+              )}
             </div>
           </li>
         ))}
       </ul>
 
-      {onShowRelatedArtists && (
-        <button
-          className="show-related-button"
-          onClick={onShowRelatedArtists}
-          style={{
-            marginTop: '30px',
-            padding: '10px 20px',
-            fontSize: '1rem',
-            backgroundColor: '#1DB954',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            color: 'white'
-          }}
-        >
-          See All Related Artists
-        </button>
-      )}
+      <div className="action-buttons" style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '20px',
+        marginTop: '30px'
+      }}>
+        {onShowRelatedArtists && (
+          <button
+            className="show-related-button"
+            onClick={onShowRelatedArtists}
+            style={{
+              padding: '10px 20px',
+              fontSize: '1rem',
+              backgroundColor: '#1DB954',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              color: 'white'
+            }}
+          >
+            See All Related Artists
+          </button>
+        )}
+
+        {onShowConcerts && (
+          <button
+            className="show-concerts-button"
+            onClick={onShowConcerts}
+            style={{
+              padding: '10px 20px',
+              fontSize: '1rem',
+              backgroundColor: '#191414',
+              border: '2px solid #1DB954',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              color: 'white'
+            }}
+          >
+            Find All Concerts
+          </button>
+        )}
+      </div>
     </div>
   );
 };

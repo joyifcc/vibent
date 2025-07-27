@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import LoginButton from './components/LoginButton';
 import TopArtistsList from './components/TopArtistsList';
 import RelatedArtistsList from './components/RelatedArtistsList';
+import ConcertFinder from './components/ConcertFinder'; // Import ConcertFinder
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
@@ -16,33 +17,36 @@ function App() {
   const [relatedArtists, setRelatedArtists] = useState([]);
   const [showRelated, setShowRelated] = useState(false);
   const [relatedLoading, setRelatedLoading] = useState(false);
+  const [showConcerts, setShowConcerts] = useState(false); // Add state for concert view
 
-  // Parse tokens from URL params on load
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get('access_token');
-    const rToken = params.get('refresh_token');
-    const expires = params.get('expires_in');
+// Parse tokens from URL params on load
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const accessToken = params.get('access_token');
+  const rToken = params.get('refresh_token');
+  const expires = params.get('expires_in');
+  
+  // Check for view state in URL
+  const view = params.get('view');
+  if (view === 'related') {
+    setShowRelated(true);
+  } else if (view === 'concerts') {
+    setShowConcerts(true);
+  }
+
+  if (accessToken) {
+    setToken(accessToken);
+    setRefreshToken(rToken);
+    setExpiresIn(Number(expires) || 3600);
     
-    // Check for view state in URL
-    const view = params.get('view');
-    if (view === 'related') {
-      setShowRelated(true);
-    }
-
-    if (accessToken) {
-      setToken(accessToken);
-      setRefreshToken(rToken);
-      setExpiresIn(Number(expires) || 3600);
-      
-      // Clear only the token params, preserve view param if needed
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.delete('access_token');
-      newUrl.searchParams.delete('refresh_token');
-      newUrl.searchParams.delete('expires_in');
-      window.history.replaceState({}, document.title, newUrl.toString());
-    }
-  }, []);
+    // Clear only the token params, preserve view param if needed
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete('access_token');
+    newUrl.searchParams.delete('refresh_token');
+    newUrl.searchParams.delete('expires_in');
+    window.history.replaceState({}, document.title, newUrl.toString());
+  }
+}, []);
 
   const refreshAccessToken = useCallback(() => {
     if (!refreshToken) return;
@@ -270,99 +274,79 @@ function App() {
     }
   }, [token, topArtists, relatedArtists.length, handleShowRelated]);
 
-  const handleBackToTop = () => {
-    setShowRelated(false);
-    
-    // Update URL to remember the view state
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.delete('view');
-    window.history.pushState({}, document.title, newUrl.toString());
-  };
+const handleShowConcerts = () => {
+  setShowConcerts(true);
+  setShowRelated(false);
   
-  const [concertResults, setConcertResults] = useState({});
-const [concertLoading, setConcertLoading] = useState(null);
-const ticketmasterKey = process.env.REACT_APP_TICKETMASTER_API_KEY;
-
-const handleFindConcerts = async (artistName) => {
-  setConcertLoading(artistName);
-  setError(null);
-
-  try {
-    const response = await fetch(`https://app.ticketmaster.com/discovery/v2/events.json?keyword=${encodeURIComponent(artistName)}&apikey=${ticketmasterKey}`);
-    const data = await response.json();
-
-    if (data._embedded && data._embedded.events) {
-      setConcertResults(prev => ({
-        ...prev,
-        [artistName]: data._embedded.events.slice(0, 3), // show top 3
-      }));
-    } else {
-      setConcertResults(prev => ({
-        ...prev,
-        [artistName]: [],
-      }));
-    }
-  } catch (err) {
-    setError(`Error fetching concerts for ${artistName}: ${err.message}`);
-  } finally {
-    setConcertLoading(null);
-  }
+  // Update URL to remember view state
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.set('view', 'concerts');
+  window.history.pushState({}, document.title, newUrl.toString());
 };
 
+const handleBackToTop = () => {
+  setShowRelated(false);
+  setShowConcerts(false);
+  
+  // Update URL to remember the view state
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.delete('view');
+  window.history.pushState({}, document.title, newUrl.toString());
+};
 
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: 'linear-gradient(to bottom, #191414, #1DB954)',
-      fontFamily: 'Arial, sans-serif',
-      color: 'white'
-    }}>
-      {!token ? (
-        <LoginButton onClick={handleLoginClick} backendUrl={BACKEND_URL} />
-      ) : (
-        <>
-          {!showRelated ? (
-            <TopArtistsList
+return (
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100vh',
+    background: 'linear-gradient(to bottom, #191414, #1DB954)',
+    fontFamily: 'Arial, sans-serif',
+    color: 'white'
+  }}>
+    {!token ? (
+      <LoginButton onClick={handleLoginClick} backendUrl={BACKEND_URL} />
+    ) : (
+      <>
+        {!showRelated && !showConcerts ? (
+          <TopArtistsList
             topArtists={topArtists}
             onArtistSelect={handleArtistSelect}
             selectedArtistId={selectedArtistId}
             onShowRelatedArtists={handleShowRelated}
-            onFindConcerts={handleFindConcerts}
-            concertResults={concertResults}
-            concertLoading={concertLoading}
+            onShowConcerts={handleShowConcerts} // Add this prop
           />
-          
-          ) : (
-            <RelatedArtistsList
-              relatedArtists={relatedArtists}
-              onBack={handleBackToTop}
-              loading={relatedLoading}
-              handleFindConcerts={handleFindConcerts}
-              concertResults={concertResults}
-              concertLoading={concertLoading}
-            />
+        ) : showRelated ? (
+          <RelatedArtistsList
+            relatedArtists={relatedArtists}
+            onBack={handleBackToTop}
+            loading={relatedLoading}
+          />
+        ) : (
+          <ConcertFinder
+            artists={[...topArtists, ...relatedArtists]}
+            onBack={handleBackToTop}
+            token={token}
+            backendUrl={BACKEND_URL}
+          />
+        )}
+      </>
+    )}
 
-          )}
-        </>
-      )}
-
-      {error && (
-        <div style={{
-          background: 'rgba(255, 0, 0, 0.2)',
-          padding: '10px 20px',
-          borderRadius: '5px',
-          margin: '20px 0',
-          maxWidth: '80%'
-        }}>
-          <p>Error: {error}</p>
-        </div>
-      )}
-    </div>
-  );
+    {error && (
+      <div style={{
+        background: 'rgba(255, 0, 0, 0.2)',
+        padding: '10px 20px',
+        borderRadius: '5px',
+        margin: '20px 0',
+        maxWidth: '80%'
+      }}>
+        <p>Error: {error}</p>
+      </div>
+    )}
+  </div>
+);
 }
 
 export default App;
