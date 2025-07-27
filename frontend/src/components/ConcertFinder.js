@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 
 function ConcertFinder({ artists, onBack, token, backendUrl }) {
-  const [concerts, setConcerts] = useState([]);
+  const [concertData, setConcertData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -14,23 +14,26 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
       try {
         // Get artist names for the first 10 artists
         const artistNames = artists.slice(0, 10).map(artist => artist.name);
+        const concertResults = {};
         
-        // Fetch concerts from backend
-        const response = await fetch(`${backendUrl}/concerts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ artists: artistNames })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch concerts: ${response.status}`);
+        // Fetch concerts for each artist individually using the existing endpoint
+        for (const artistName of artistNames) {
+          try {
+            const response = await fetch(`/api/concerts?artistName=${encodeURIComponent(artistName)}`);
+            
+            if (!response.ok) {
+              console.warn(`Failed to fetch concerts for ${artistName}: ${response.status}`);
+              continue; // Skip to next artist if this one fails
+            }
+            
+            const data = await response.json();
+            concertResults[artistName] = data.events || [];
+          } catch (artistError) {
+            console.error(`Error fetching concerts for ${artistName}:`, artistError);
+          }
         }
         
-        const data = await response.json();
-        setConcerts(data.events || []);
+        setConcertData(concertResults);
       } catch (err) {
         console.error("Error fetching concerts:", err);
         setError(err.message);
@@ -42,12 +45,21 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
     if (artists && artists.length > 0) {
       fetchConcerts();
     }
-  }, [artists, token, backendUrl]);
+  }, [artists]);
 
   const formatDate = (dateString) => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
+
+  // Flatten all concerts from different artists into a single array
+  const allConcerts = Object.values(concertData)
+    .flat()
+    .filter(concert => concert) // Remove any undefined values
+    // Remove duplicates based on event ID
+    .filter((concert, index, self) => 
+      index === self.findIndex(c => c.id === concert.id)
+    );
 
   return (
     <div style={{
@@ -97,7 +109,7 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
         </div>
       )}
 
-      {!loading && concerts.length === 0 && !error && (
+      {!loading && allConcerts.length === 0 && !error && (
         <div style={{
           background: 'rgba(255, 255, 255, 0.1)',
           padding: '20px',
@@ -109,9 +121,9 @@ function ConcertFinder({ artists, onBack, token, backendUrl }) {
         </div>
       )}
 
-      {concerts.length > 0 && (
+      {allConcerts.length > 0 && (
         <div>
-          {concerts.map((concert, index) => (
+          {allConcerts.map((concert, index) => (
             <div 
               key={concert.id || index}
               style={{
