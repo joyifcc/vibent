@@ -4,50 +4,43 @@ import './TopArtistsList.css';
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
+  const [expandedArtists, setExpandedArtists] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [locationFilter, setLocationFilter] = useState('');
+
+  const toggleExpanded = (artistName) => {
+    setExpandedArtists(prev => ({
+      ...prev,
+      [artistName]: !prev[artistName]
+    }));
+  };
 
   useEffect(() => {
     const fetchConcerts = async () => {
       setLoading(true);
       setError(null);
       const data = {};
-      
+
       for (const artist of topArtists) {
         try {
-          // Use the correct backend URL
           const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
           const url = `${BACKEND_URL}/concerts?artistName=${encodeURIComponent(artist.name)}`;
-          
-          console.log(`Fetching concerts from: ${url}`);
           const res = await fetch(url);
-          
-          // Check if response is OK before parsing
+
           if (!res.ok) {
-            console.error(`Error response for ${artist.name}: ${res.status} ${res.statusText}`);
             const text = await res.text();
-            console.error(`Response body: ${text.substring(0, 200)}...`);
-            throw new Error(`API returned ${res.status}`);
+            throw new Error(`API returned ${res.status}: ${text}`);
           }
-          
+
           const json = await res.json();
-          console.log(`Concert data for ${artist.name}:`, json);
-          
-          // Make sure we're storing the events array correctly
-          if (Array.isArray(json.events)) {
-            data[artist.name] = json.events;
-            console.log(`Stored ${json.events.length} concerts for ${artist.name}`);
-          } else {
-            console.warn(`No events array found for ${artist.name}, response:`, json);
-            data[artist.name] = [];
-          }
+          data[artist.name] = Array.isArray(json.events) ? json.events : [];
         } catch (error) {
-          console.error(`Error fetching concerts for ${artist.name}:`, error);
           data[artist.name] = [];
+          console.error(`Concert fetch error for ${artist.name}:`, error);
         }
       }
-      
-      console.log("Final concert data:", data);
+
       setConcertData(data);
       setLoading(false);
     };
@@ -60,7 +53,24 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   return (
     <div className="top-artists-container">
       <h1 className="title">Your Top Spotify Artists</h1>
-      
+
+      {/* Location Filter */}
+      <div style={{ margin: '20px 0', textAlign: 'center' }}>
+        <input
+          type="text"
+          placeholder="Filter by City (e.g. New York)"
+          value={locationFilter}
+          onChange={(e) => setLocationFilter(e.target.value)}
+          style={{
+            padding: '10px',
+            fontSize: '1rem',
+            borderRadius: '8px',
+            border: '1px solid #ccc',
+            width: '250px'
+          }}
+        />
+      </div>
+
       {error && (
         <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
           Error loading concerts: {error}
@@ -68,61 +78,86 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       )}
 
       <ul className="artist-list">
-        {topArtists.map((artist, index) => (
-          <li key={index} className="artist-card">
-            <img
-              src={artist.images?.[0]?.url}
-              alt={artist.name}
-              className="artist-img"
-            />
-            <div>
-              <h3 className="artist-name">{artist.name}</h3>
-              <p className="artist-popularity">Popularity: {artist.popularity}</p>
+        {topArtists.map((artist, index) => {
+          const concerts = concertData[artist.name] || [];
 
-              {/* Related Artists */}
-              {artist.relatedArtists?.length > 0 && (
-                <div className="related-artists">
-                  <p className="related-title">Related Artists:</p>
-                  <ul className="related-list">
-                    {artist.relatedArtists.slice(0, 3).map((rel, i) => (
-                      <li key={i} className="related-item">{rel.name}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          // Apply city filter
+          const filteredConcerts = concerts.filter(event =>
+            !locationFilter || (event.venue && event.venue.toLowerCase().includes(locationFilter.toLowerCase()))
+          );
 
-              {/* Concerts with improved handling */}
-              {loading ? (
-                <p className="loading-concerts">Loading concerts...</p>
-              ) : concertData[artist.name] && concertData[artist.name].length > 0 ? (
-                <div className="concerts">
-                  <p className="concert-title">Upcoming Concerts:</p>
-                  <ul className="concert-list">
-                    {concertData[artist.name].slice(0, 2).map((event, i) => (
-                      <li key={i} className="concert-item">
-                        {event.name} — {event.date} @ {event.venue}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="no-concerts">
-                  No concerts found
-                  {process.env.NODE_ENV === 'development' && 
-                    ` (${concertData[artist.name] ? 'Empty array' : 'No data'})`}
-                </p>
-              )}
-            </div>
-          </li>
-        ))}
+          return (
+            <li key={index} className="artist-card">
+              <img
+                src={artist.images?.[0]?.url}
+                alt={artist.name}
+                className="artist-img"
+              />
+              <div>
+                <h3 className="artist-name">{artist.name}</h3>
+                <p className="artist-popularity">Popularity: {artist.popularity}</p>
+
+                {/* Related Artists */}
+                {artist.relatedArtists?.length > 0 && (
+                  <div className="related-artists">
+                    <p className="related-title">Related Artists:</p>
+                    <ul className="related-list">
+                      {artist.relatedArtists.slice(0, 3).map((rel, i) => (
+                        <li key={i} className="related-item">{rel.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Concerts */}
+                {loading ? (
+                  <p className="loading-concerts">Loading concerts...</p>
+                ) : filteredConcerts.length > 0 ? (
+                  <>
+                    <button
+                      onClick={() => toggleExpanded(artist.name)}
+                      style={{
+                        marginTop: '10px',
+                        backgroundColor: '#1DB954',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {expandedArtists[artist.name] ? 'Hide Concerts' : 'Show All Concerts'}
+                    </button>
+
+                    {expandedArtists[artist.name] ? (
+                      <ul className="concert-list" style={{ marginTop: '10px' }}>
+                        {filteredConcerts.map((event, i) => (
+                          <li key={i} className="concert-item">
+                            {event.name} — {event.date} @ {event.venue}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <ul className="concert-list" style={{ marginTop: '10px' }}>
+                        {filteredConcerts.slice(0, 2).map((event, i) => (
+                          <li key={i} className="concert-item">
+                            {event.name} — {event.date} @ {event.venue}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  <p className="no-concerts">No concerts found</p>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
-      <div className="action-buttons" style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '20px',
-        marginTop: '30px'
-      }}>
+      {/* Bottom Buttons */}
+      <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '30px' }}>
         {onShowRelatedArtists && (
           <button
             className="show-related-button"

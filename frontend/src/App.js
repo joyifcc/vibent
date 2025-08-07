@@ -273,7 +273,7 @@ function App() {
     } finally {
       setRelatedLoading(false);
     }
-  }, [token, topArtists]);
+  }, [token, topArtists, BACKEND_URL]);
 
   useEffect(() => {
     // Only process URL parameters if we have a token and artists loaded
