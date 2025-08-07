@@ -81,10 +81,19 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
         {topArtists.map((artist, index) => {
           const concerts = concertData[artist.name] || [];
 
-          // Apply city filter
-          const filteredConcerts = concerts.filter(event =>
-            !locationFilter || (event.venue && event.venue.toLowerCase().includes(locationFilter.toLowerCase()))
-          );
+          const filteredConcerts = concerts.filter(event => {
+            const query = locationFilter.toLowerCase();
+            return (
+              !locationFilter ||
+              (event.city && event.city.toLowerCase().includes(query)) ||
+              (event.state && event.state.toLowerCase().includes(query)) ||
+              (event.country && event.country.toLowerCase().includes(query)) ||
+              (event.venue && event.venue.toLowerCase().includes(query)) ||
+              (event.name && event.name.toLowerCase().includes(query)) // catches festivals/tours
+            );
+          });
+          
+          
 
           return (
             <li key={index} className="artist-card">

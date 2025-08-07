@@ -181,12 +181,13 @@ app.get('/related-artists/:artistId', async (req, res) => {
   }
 });
 
-// Concerts endpoint without caching
+// Concerts endpoint with optional city/state filtering
 app.get('/concerts', async (req, res) => {
   try {
-    // Input validation
     const artistName = req.query.artistName ? req.query.artistName.trim() : '';
-    
+    const city = req.query.city ? req.query.city.trim().toLowerCase() : '';
+    const state = req.query.state ? req.query.state.trim().toLowerCase() : '';
+
     if (!artistName || artistName.length > 100) {
       return res.status(400).json({ error: 'Artist name is required and must be less than 100 characters' });
     }
@@ -195,9 +196,9 @@ app.get('/concerts', async (req, res) => {
       console.error('TICKETMASTER_API_KEY is not defined');
       return res.status(500).json({ error: 'Server configuration error: Missing Ticketmaster API key' });
     }
+
+    console.log(`Fetching concerts for ${artistName} with filters - city: ${city}, state: ${state}`);
     
-    // Make direct API call to Ticketmaster
-    console.log(`Fetching concerts for ${artistName}`);
     const apiUrl = `https://app.ticketmaster.com/discovery/v2/events.json`;
     const response = await axios.get(apiUrl, {
       params: {
@@ -208,9 +209,8 @@ app.get('/concerts', async (req, res) => {
       },
     });
 
-    // Process and return the data
     const events = response.data._embedded ? response.data._embedded.events : [];
-    
+
     const formattedEvents = events.map(event => {
       const venue = event._embedded?.venues?.[0];
       return {
@@ -219,7 +219,7 @@ app.get('/concerts', async (req, res) => {
         date: event.dates.start.localDate,
         time: event.dates.start.localTime || null,
         venue: venue?.name || 'Unknown Venue',
-        city: venue?.city?.name || 'Unknown City',
+        city: venue?.city?.name || '',
         state: venue?.state?.name || venue?.state?.stateCode || '',
         country: venue?.country?.name || venue?.country?.countryCode || '',
         url: event.url,
@@ -227,9 +227,15 @@ app.get('/concerts', async (req, res) => {
         priceRanges: event.priceRanges || []
       };
     });
-    
 
-    return res.json({ events: formattedEvents });
+    // Optional city/state filtering
+    const filteredEvents = formattedEvents.filter(event => {
+      const matchesCity = city ? event.city.toLowerCase().includes(city) : true;
+      const matchesState = state ? event.state.toLowerCase().includes(state) : true;
+      return matchesCity && matchesState;
+    });
+
+    return res.json({ events: filteredEvents });
   } catch (error) {
     console.error('Error fetching concerts:', error.response?.data || error.message);
     return res.status(500).json({ 
@@ -238,6 +244,7 @@ app.get('/concerts', async (req, res) => {
     });
   }
 });
+
 
 // Start the server
 app.listen(PORT, () => {
