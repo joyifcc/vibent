@@ -39,6 +39,8 @@ const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
 const redirect_uri = process.env.REDIRECT_URI;
 const frontend_uri = process.env.FRONTEND_URI || 'https://vibent-hdvq.vercel.app';
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
+const AMADEUS_API_KEY = process.env.AMADEUS_API_KEY;
+const AMADEUS_API_SECRET = process.env.AMADEUS_API_SECRET;
 
 // Log environment variables
 console.log('Environment Variables Check:');
