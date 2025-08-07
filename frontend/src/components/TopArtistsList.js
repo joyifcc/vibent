@@ -58,7 +58,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       <div style={{ margin: '20px 0', textAlign: 'center' }}>
         <input
           type="text"
-          placeholder="Filter by City (e.g. New York)"
+          placeholder="Filter by City or State (e.g. New York)"
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
           style={{
@@ -142,16 +142,32 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                       <ul className="concert-list" style={{ marginTop: '10px' }}>
                         {filteredConcerts.map((event, i) => (
                           <li key={i} className="concert-item">
-                            {event.name} — {event.date} @ {event.venue}
-                          </li>
+                          <a
+                            href={event.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#1DB954', textDecoration: 'underline' }}
+                          >
+                            {event.name}
+                          </a> — {event.date} @ {event.venue}
+                        </li>
+                        
                         ))}
                       </ul>
                     ) : (
                       <ul className="concert-list" style={{ marginTop: '10px' }}>
                         {filteredConcerts.slice(0, 2).map((event, i) => (
                           <li key={i} className="concert-item">
-                            {event.name} — {event.date} @ {event.venue}
-                          </li>
+                          <a
+                            href={event.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#1DB954', textDecoration: 'underline' }}
+                          >
+                            {event.name}
+                          </a> — {event.date} @ {event.venue}
+                        </li>
+                        
                         ))}
                       </ul>
                     )}
