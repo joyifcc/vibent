@@ -211,19 +211,23 @@ app.get('/concerts', async (req, res) => {
     // Process and return the data
     const events = response.data._embedded ? response.data._embedded.events : [];
     
-    const formattedEvents = events.map(event => ({
-      id: event.id,
-      name: event.name,
-      date: event.dates.start.localDate,
-      time: event.dates.start.localTime || null,
-      venue: event._embedded?.venues?.[0]?.name || 'Unknown Venue',
-      city: event._embedded?.venues?.[0]?.city?.name || 'Unknown City',
-      state: event._embedded?.venues?.[0]?.state?.stateCode || '',
-      country: event._embedded?.venues?.[0]?.country?.countryCode || '',
-      url: event.url,
-      images: event.images || [],
-      priceRanges: event.priceRanges || []
-    }));
+    const formattedEvents = events.map(event => {
+      const venue = event._embedded?.venues?.[0];
+      return {
+        id: event.id,
+        name: event.name,
+        date: event.dates.start.localDate,
+        time: event.dates.start.localTime || null,
+        venue: venue?.name || 'Unknown Venue',
+        city: venue?.city?.name || 'Unknown City',
+        state: venue?.state?.name || venue?.state?.stateCode || '',
+        country: venue?.country?.name || venue?.country?.countryCode || '',
+        url: event.url,
+        images: event.images || [],
+        priceRanges: event.priceRanges || []
+      };
+    });
+    
 
     return res.json({ events: formattedEvents });
   } catch (error) {
