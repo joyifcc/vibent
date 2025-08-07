@@ -47,8 +47,8 @@ console.log('SPOTIFY_CLIENT_SECRET:', client_secret ? '✓ Set' : '❌ Missing')
 console.log('REDIRECT_URI:', redirect_uri || '❌ Missing');
 console.log('FRONTEND_URI:', frontend_uri || '❌ Missing');
 console.log('TICKETMASTER_API_KEY:', TICKETMASTER_API_KEY ? '✓ Set' : '❌ Missing');
-console.log('AMADUES_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
-console.log('AMADUES_CLIENT_SECRET:', process.env.AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
+console.log('AMADEUS_API_KEY:', process.env.AMADEUS_API_KEY ? '✓ Set' : '❌ Missing');
+console.log('AMADEUS_API_SECRET:', process.env.AMADEUS_API_SECRET ? '✓ Set' : '❌ Missing');
 console.log('PORT:', PORT);
 
 // Root route to verify the server is running
