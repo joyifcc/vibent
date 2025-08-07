@@ -3,11 +3,18 @@ const axios = require('axios');
 const querystring = require('querystring');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const Amadeus = require('amadeus');  // <-- import Amadeus SDK
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+
+// Initialize Amadeus client
+const amadeus = new Amadeus({
+  clientId: process.env.AMADEUS_CLIENT_ID,
+  clientSecret: process.env.AMADEUS_CLIENT_SECRET
+});
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -17,7 +24,7 @@ app.use((req, res, next) => {
 
 // Enable CORS for all routes
 app.use(cors({
-  origin: '*', // Allow all origins during testing
+  origin: '*',
   methods: 'GET,POST,PUT,DELETE',
   credentials: true
 }));
@@ -40,6 +47,8 @@ console.log('SPOTIFY_CLIENT_SECRET:', client_secret ? '✓ Set' : '❌ Missing')
 console.log('REDIRECT_URI:', redirect_uri || '❌ Missing');
 console.log('FRONTEND_URI:', frontend_uri || '❌ Missing');
 console.log('TICKETMASTER_API_KEY:', TICKETMASTER_API_KEY ? '✓ Set' : '❌ Missing');
+console.log('AMADUES_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
+console.log('AMADUES_CLIENT_SECRET:', process.env.AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
 console.log('PORT:', PORT);
 
 // Root route to verify the server is running
@@ -245,6 +254,34 @@ app.get('/concerts', async (req, res) => {
   }
 });
 
+app.get('/flights', async (req, res) => {
+  try {
+    const { origin, destination, departureDate, returnDate } = req.query;
+
+    if (!origin || !destination || !departureDate) {
+      return res.status(400).json({ error: 'origin, destination, and departureDate are required query parameters' });
+    }
+
+    const params = {
+      originLocationCode: origin.toUpperCase(),
+      destinationLocationCode: destination.toUpperCase(),
+      departureDate,
+      adults: 1,
+      max: 5,
+    };
+
+    if (returnDate) {
+      params.returnDate = returnDate;
+    }
+
+    const response = await amadeus.shopping.flightOffersSearch.get(params);
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('Error fetching flights:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch flights', details: error.response?.data || error.message });
+  }
+});
 
 // Start the server
 app.listen(PORT, () => {

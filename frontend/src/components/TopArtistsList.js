@@ -1,4 +1,3 @@
-// src/components/TopArtistsList.js
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 
@@ -8,6 +7,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [locationFilter, setLocationFilter] = useState('');
+
+  // New state for flight offers per event id
+  const [flightOffers, setFlightOffers] = useState({});
+  const [loadingFlights, setLoadingFlights] = useState({});
+  const [errorFlights, setErrorFlights] = useState({});
 
   const toggleExpanded = (artistName) => {
     setExpandedArtists(prev => ({
@@ -50,6 +54,52 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   }, [topArtists]);
 
+  // Function to fetch flights for a specific concert event
+  const fetchFlightsForEvent = async (event) => {
+    const { city, date } = event;
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
+
+    // Assuming origin is user's city or a fixed one; you may want to get this from user input/context
+    const origin = 'SFO'; // Example: San Francisco Airport code (update accordingly)
+
+    if (!city || !date) {
+      alert('Missing concert city or date to fetch flights.');
+      return;
+    }
+
+    setLoadingFlights(prev => ({ ...prev, [event.id]: true }));
+    setErrorFlights(prev => ({ ...prev, [event.id]: null }));
+
+    try {
+      // You'll want to convert city to airport code — for simplicity, here we use city name as destination
+      // Ideally you integrate a geo-to-IATA or user input for airport code
+      // For now, let's assume destination is city name's first 3 letters uppercase (this is a simplification)
+      const destination = city.slice(0,3).toUpperCase();
+
+      // Call your backend flights endpoint
+      const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${destination}&departureDate=${date}`;
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Flights API returned ${res.status}: ${text}`);
+      }
+
+      const json = await res.json();
+
+      setFlightOffers(prev => ({
+        ...prev,
+        [event.id]: json.data || [] // Amadeus returns flights under `data` array
+      }));
+    } catch (error) {
+      console.error(`Error fetching flights for event ${event.id}:`, error);
+      setErrorFlights(prev => ({ ...prev, [event.id]: error.message }));
+      setFlightOffers(prev => ({ ...prev, [event.id]: [] }));
+    } finally {
+      setLoadingFlights(prev => ({ ...prev, [event.id]: false }));
+    }
+  };
+
   return (
     <div className="top-artists-container">
       <h1 className="title">Your Top Spotify Artists</h1>
@@ -89,11 +139,9 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
               (event.state && event.state.toLowerCase().includes(query)) ||
               (event.country && event.country.toLowerCase().includes(query)) ||
               (event.venue && event.venue.toLowerCase().includes(query)) ||
-              (event.name && event.name.toLowerCase().includes(query)) // catches festivals/tours
+              (event.name && event.name.toLowerCase().includes(query))
             );
           });
-          
-          
 
           return (
             <li key={index} className="artist-card">
@@ -141,33 +189,66 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                     {expandedArtists[artist.name] ? (
                       <ul className="concert-list" style={{ marginTop: '10px' }}>
                         {filteredConcerts.map((event, i) => (
-                          <li key={i} className="concert-item">
-                          <a
-                            href={event.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: '#1DB954', textDecoration: 'underline' }}
-                          >
-                            {event.name}
-                          </a> — {event.date} @ {event.venue}
-                        </li>
-                        
+                          <li key={i} className="concert-item" style={{ marginBottom: '20px' }}>
+                            <a
+                              href={event.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#1DB954', textDecoration: 'underline' }}
+                            >
+                              {event.name}
+                            </a> — {event.date} @ {event.venue}
+
+                            {/* Show Flights Button */}
+                            <div style={{ marginTop: '8px' }}>
+                              <button
+                                onClick={() => fetchFlightsForEvent(event)}
+                                disabled={loadingFlights[event.id]}
+                                style={{
+                                  backgroundColor: '#0070f3',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '5px 10px',
+                                  borderRadius: '5px',
+                                  cursor: loadingFlights[event.id] ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.9rem'
+                                }}
+                              >
+                                {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
+                              </button>
+                            </div>
+
+                            {/* Flight Offers Display */}
+                            {errorFlights[event.id] && (
+                              <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
+                            )}
+
+                            {flightOffers[event.id] && flightOffers[event.id].length > 0 && (
+                              <ul style={{ marginTop: '10px', listStyleType: 'disc', paddingLeft: '20px' }}>
+                                {flightOffers[event.id].map((flight, idx) => (
+                                  <li key={idx} style={{ fontSize: '0.9rem' }}>
+                                    {/* Show simple flight info: airline, price, departure/arrival */}
+                                    {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} - ${flight.price?.total} - Departure: {flight.itineraries?.[0]?.segments?.[0]?.departure?.at}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
                         ))}
                       </ul>
                     ) : (
                       <ul className="concert-list" style={{ marginTop: '10px' }}>
                         {filteredConcerts.slice(0, 2).map((event, i) => (
                           <li key={i} className="concert-item">
-                          <a
-                            href={event.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: '#1DB954', textDecoration: 'underline' }}
-                          >
-                            {event.name}
-                          </a> — {event.date} @ {event.venue}
-                        </li>
-                        
+                            <a
+                              href={event.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#1DB954', textDecoration: 'underline' }}
+                            >
+                              {event.name}
+                            </a> — {event.date} @ {event.venue}
+                          </li>
                         ))}
                       </ul>
                     )}
