@@ -1,28 +1,18 @@
-
-import fetch from "node-fetch";
 const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const Amadeus = require('amadeus'); // import once
+const Amadeus = require('amadeus');
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-// Debug logs for Amadeus keys
-console.log('AMADEUS_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
-console.log('AMADEUS_CLIENT_SECRET:', process.env.AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
-
-
-
-const amadeus = new Amadeus({
-  clientId: process.env.AMADEUS_CLIENT_ID,
-  clientSecret: process.env.AMADEUS_CLIENT_SECRET
-});
-
+// Amadeus credentials from env
+const AMADEUS_CLIENT_ID = process.env.AMADEUS_CLIENT_ID;
+const AMADEUS_CLIENT_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 
 // Spotify + Ticketmaster env variables
 const PORT = process.env.PORT || 8888;
@@ -32,23 +22,9 @@ const redirect_uri = process.env.REDIRECT_URI;
 const frontend_uri = process.env.FRONTEND_URI || 'https://vibent-hdvq.vercel.app';
 const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// CORS
-app.use(cors({
-  origin: '*',
-  methods: 'GET,POST,PUT,DELETE',
-  credentials: true
-}));
-
-app.use(express.json());
-
-
-console.log('Environment Variables Check:');
+// Logging environment variables status
+console.log('AMADEUS_CLIENT_ID:', AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
+console.log('AMADEUS_CLIENT_SECRET:', AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
 console.log('SPOTIFY_CLIENT_ID:', client_id ? '✓ Set' : '❌ Missing');
 console.log('SPOTIFY_CLIENT_SECRET:', client_secret ? '✓ Set' : '❌ Missing');
 console.log('REDIRECT_URI:', redirect_uri || '❌ Missing');
@@ -56,9 +32,21 @@ console.log('FRONTEND_URI:', frontend_uri || '❌ Missing');
 console.log('TICKETMASTER_API_KEY:', TICKETMASTER_API_KEY ? '✓ Set' : '❌ Missing');
 console.log('PORT:', PORT);
 
-// Root route to verify the server is running
+// CORS setup
+app.use(cors({
+  origin: '*',
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true
+}));
+
+// Simple logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// Root route
 app.get('/', (req, res) => {
-  console.log('Root route accessed');
   res.send('Vibent API is running! Go to /login to authenticate with Spotify.');
 });
 
@@ -259,31 +247,50 @@ app.get('/concerts', async (req, res) => {
   }
 });
 
-// Fetch Amadeus Access Token
+let amadeusAccessToken = null;
+let amadeusTokenExpiresAt = 0;
+
 async function getAmadeusAccessToken() {
-  const res = await axios.post('https://test.api.amadeus.com/v1/security/oauth2/token', new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: AMADEUS_API_KEY,
-    client_secret: AMADEUS_API_SECRET
-  }), {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  });
-  return res.data.access_token;
+  try {
+    const response = await axios.post('https://test.api.amadeus.com/v1/security/oauth2/token',
+      querystring.stringify({
+        grant_type: 'client_credentials',
+        client_id: AMADEUS_CLIENT_ID,
+        client_secret: AMADEUS_CLIENT_SECRET,
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    amadeusAccessToken = response.data.access_token;
+    // Set expiry time a bit earlier than actual to refresh in time
+    amadeusTokenExpiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
+
+    console.log('Obtained new Amadeus access token');
+    return amadeusAccessToken;
+  } catch (error) {
+    console.error('Failed to get Amadeus access token:', error.response?.data || error.message);
+    throw error;
+  }
 }
 
-// Middleware to refresh token if needed
-async function ensureAccessToken() {
-  if (!amadeusAccessToken) {
-    amadeusAccessToken = await getAmadeusAccessToken();
+async function ensureAmadeusAccessToken() {
+  if (!amadeusAccessToken || Date.now() > amadeusTokenExpiresAt) {
+    return await getAmadeusAccessToken();
   }
+  return amadeusAccessToken;
 }
 
 // Flights route
 app.get('/flights', async (req, res) => {
   const { origin, destination, departureDate } = req.query;
 
+  if (!origin || !destination || !departureDate) {
+    return res.status(400).json({ error: 'origin, destination, and departureDate query parameters are required' });
+  }
+
   try {
-    await ensureAccessToken();
+    await ensureAmadeusAccessToken();
+
     const flightsRes = await axios.get('https://test.api.amadeus.com/v2/shopping/flight-offers', {
       headers: { Authorization: `Bearer ${amadeusAccessToken}` },
       params: {

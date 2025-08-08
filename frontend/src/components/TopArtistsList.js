@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
+import cityToAirport from './Airportcodes';
+
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
@@ -7,6 +9,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [locationFilter, setLocationFilter] = useState('');
+  const [originAirport, setOriginAirport] = useState('SFO'); // default origin airport
 
   // New state for flight offers per event id
   const [flightOffers, setFlightOffers] = useState({});
@@ -54,16 +57,19 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   }, [topArtists]);
 
-  // Function to fetch flights for a specific concert event
   const fetchFlightsForEvent = async (event) => {
     const { city, date } = event;
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
-    // Assuming origin is user's city or a fixed one; you may want to get this from user input/context
-    const origin = 'SFO'; // Example: San Francisco Airport code (update accordingly)
-
     if (!city || !date) {
       alert('Missing concert city or date to fetch flights.');
+      return;
+    }
+
+    const destination = cityToAirport[city];
+
+    if (!destination) {
+      alert(`No airport code found for city "${city}". Please check the concert location.`);
       return;
     }
 
@@ -71,13 +77,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     setErrorFlights(prev => ({ ...prev, [event.id]: null }));
 
     try {
-      // You'll want to convert city to airport code — for simplicity, here we use city name as destination
-      // Ideally you integrate a geo-to-IATA or user input for airport code
-      // For now, let's assume destination is city name's first 3 letters uppercase (this is a simplification)
-      const destination = city.slice(0,3).toUpperCase();
-
-      // Call your backend flights endpoint
-      const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${destination}&departureDate=${date}`;
+      const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
       const res = await fetch(url);
 
       if (!res.ok) {
@@ -89,7 +89,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
       setFlightOffers(prev => ({
         ...prev,
-        [event.id]: json.data || [] // Amadeus returns flights under `data` array
+        [event.id]: json.data || []
       }));
     } catch (error) {
       console.error(`Error fetching flights for event ${event.id}:`, error);
@@ -103,7 +103,26 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   return (
     <div className="top-artists-container">
       <h1 className="title">Your Top Spotify Artists</h1>
-
+  
+      {/* Origin Airport Selector */}
+      <div style={{ margin: '20px 0', textAlign: 'center' }}>
+        <label htmlFor="originAirport" style={{ marginRight: '10px' }}>
+          Select your home airport:
+        </label>
+        <select
+          id="originAirport"
+          value={originAirport}
+          onChange={(e) => setOriginAirport(e.target.value)}
+          style={{ padding: '8px', fontSize: '1rem', borderRadius: '6px' }}
+        >
+          {Object.entries(cityToAirport).map(([city, code]) => (
+            <option key={code} value={code}>
+              {city} ({code})
+            </option>
+          ))}
+        </select>
+      </div>
+  
       {/* Location Filter */}
       <div style={{ margin: '20px 0', textAlign: 'center' }}>
         <input
@@ -120,17 +139,17 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
           }}
         />
       </div>
-
+  
       {error && (
         <div className="error-message" style={{ color: 'red', margin: '10px 0' }}>
           Error loading concerts: {error}
         </div>
       )}
-
+  
       <ul className="artist-list">
         {topArtists.map((artist, index) => {
           const concerts = concertData[artist.name] || [];
-
+  
           const filteredConcerts = concerts.filter(event => {
             const query = locationFilter.toLowerCase();
             return (
@@ -142,7 +161,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
               (event.name && event.name.toLowerCase().includes(query))
             );
           });
-
+  
           return (
             <li key={index} className="artist-card">
               <img
@@ -153,7 +172,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
               <div>
                 <h3 className="artist-name">{artist.name}</h3>
                 <p className="artist-popularity">Popularity: {artist.popularity}</p>
-
+  
                 {/* Related Artists */}
                 {artist.relatedArtists?.length > 0 && (
                   <div className="related-artists">
@@ -165,7 +184,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                     </ul>
                   </div>
                 )}
-
+  
                 {/* Concerts */}
                 {loading ? (
                   <p className="loading-concerts">Loading concerts...</p>
@@ -185,7 +204,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                     >
                       {expandedArtists[artist.name] ? 'Hide Concerts' : 'Show All Concerts'}
                     </button>
-
+  
                     {expandedArtists[artist.name] ? (
                       <ul className="concert-list" style={{ marginTop: '10px' }}>
                         {filteredConcerts.map((event, i) => (
@@ -198,7 +217,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                             >
                               {event.name}
                             </a> — {event.date} @ {event.venue}
-
+  
                             {/* Show Flights Button */}
                             <div style={{ marginTop: '8px' }}>
                               <button
@@ -217,18 +236,20 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                 {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
                               </button>
                             </div>
-
+  
                             {/* Flight Offers Display */}
                             {errorFlights[event.id] && (
                               <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
                             )}
-
+  
                             {flightOffers[event.id] && flightOffers[event.id].length > 0 && (
                               <ul style={{ marginTop: '10px', listStyleType: 'disc', paddingLeft: '20px' }}>
                                 {flightOffers[event.id].map((flight, idx) => (
-                                  <li key={idx} style={{ fontSize: '0.9rem' }}>
-                                    {/* Show simple flight info: airline, price, departure/arrival */}
-                                    {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} - ${flight.price?.total} - Departure: {flight.itineraries?.[0]?.segments?.[0]?.departure?.at}
+                                  <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '5px' }}>
+                                    Airline: {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} | 
+                                    Price: ${flight.price?.total} | 
+                                    Depart: {new Date(flight.itineraries?.[0]?.segments?.[0]?.departure?.at).toLocaleString()} | 
+                                    Arrive: {new Date(flight.itineraries?.[0]?.segments?.[0]?.arrival?.at).toLocaleString()}
                                   </li>
                                 ))}
                               </ul>
@@ -261,7 +282,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
           );
         })}
       </ul>
-
+  
       {/* Bottom Buttons */}
       <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '30px' }}>
         {onShowRelatedArtists && (
@@ -281,7 +302,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
             See All Related Artists
           </button>
         )}
-
+  
         {onShowConcerts && (
           <button
             className="show-concerts-button"
@@ -303,5 +324,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     </div>
   );
 };
+  
 
 export default TopArtistsList;
