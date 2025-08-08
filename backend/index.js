@@ -3,54 +3,52 @@ const axios = require('axios');
 const querystring = require('querystring');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const Amadeus = require('amadeus');  // <-- import Amadeus SDK
+const Amadeus = require('amadeus'); // import once
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Initialize Amadeus client
+// Debug logs for Amadeus keys
+console.log('AMADEUS_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
+console.log('AMADEUS_CLIENT_SECRET:', process.env.AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
+
+// Initialize Amadeus
 const amadeus = new Amadeus({
   clientId: process.env.AMADEUS_CLIENT_ID,
   clientSecret: process.env.AMADEUS_CLIENT_SECRET
 });
 
-// Request logging middleware
+// Spotify + Ticketmaster env variables
+const PORT = process.env.PORT || 8888;
+const client_id = process.env.SPOTIFY_CLIENT_ID;
+const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+const redirect_uri = process.env.REDIRECT_URI;
+const frontend_uri = process.env.FRONTEND_URI || 'https://vibent-hdvq.vercel.app';
+const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
+
+// Request logging
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
 
-// Enable CORS for all routes
+// CORS
 app.use(cors({
   origin: '*',
   methods: 'GET,POST,PUT,DELETE',
   credentials: true
 }));
 
-// Parse JSON bodies
 app.use(express.json());
 
-const PORT = process.env.PORT || 8888;
 
-const client_id = process.env.SPOTIFY_CLIENT_ID;
-const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
-const redirect_uri = process.env.REDIRECT_URI;
-const frontend_uri = process.env.FRONTEND_URI || 'https://vibent-hdvq.vercel.app';
-const TICKETMASTER_API_KEY = process.env.TICKETMASTER_API_KEY;
-const AMADEUS_API_KEY = process.env.AMADEUS_API_KEY;
-const AMADEUS_API_SECRET = process.env.AMADEUS_API_SECRET;
-
-// Log environment variables
 console.log('Environment Variables Check:');
 console.log('SPOTIFY_CLIENT_ID:', client_id ? '✓ Set' : '❌ Missing');
 console.log('SPOTIFY_CLIENT_SECRET:', client_secret ? '✓ Set' : '❌ Missing');
 console.log('REDIRECT_URI:', redirect_uri || '❌ Missing');
 console.log('FRONTEND_URI:', frontend_uri || '❌ Missing');
 console.log('TICKETMASTER_API_KEY:', TICKETMASTER_API_KEY ? '✓ Set' : '❌ Missing');
-console.log('AMADEUS_API_KEY:', process.env.AMADEUS_API_KEY ? '✓ Set' : '❌ Missing');
-console.log('AMADEUS_API_SECRET:', process.env.AMADEUS_API_SECRET ? '✓ Set' : '❌ Missing');
 console.log('PORT:', PORT);
 
 // Root route to verify the server is running
@@ -277,7 +275,6 @@ app.get('/flights', async (req, res) => {
     }
 
     const response = await amadeus.shopping.flightOffersSearch.get(params);
-
     res.json(response.data);
   } catch (error) {
     console.error('Error fetching flights:', error.response?.data || error.message);
@@ -285,7 +282,7 @@ app.get('/flights', async (req, res) => {
   }
 });
 
-// Start the server
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
