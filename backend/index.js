@@ -1,3 +1,5 @@
+
+import fetch from "node-fetch";
 const express = require('express');
 const axios = require('axios');
 const querystring = require('querystring');
@@ -8,16 +10,19 @@ const Amadeus = require('amadeus'); // import once
 dotenv.config();
 
 const app = express();
+app.use(express.json());
 
 // Debug logs for Amadeus keys
 console.log('AMADEUS_CLIENT_ID:', process.env.AMADEUS_CLIENT_ID ? '✓ Set' : '❌ Missing');
 console.log('AMADEUS_CLIENT_SECRET:', process.env.AMADEUS_CLIENT_SECRET ? '✓ Set' : '❌ Missing');
 
-// Initialize Amadeus
+
+
 const amadeus = new Amadeus({
   clientId: process.env.AMADEUS_CLIENT_ID,
   clientSecret: process.env.AMADEUS_CLIENT_SECRET
 });
+
 
 // Spotify + Ticketmaster env variables
 const PORT = process.env.PORT || 8888;
@@ -254,34 +259,48 @@ app.get('/concerts', async (req, res) => {
   }
 });
 
+// Fetch Amadeus Access Token
+async function getAmadeusAccessToken() {
+  const res = await axios.post('https://test.api.amadeus.com/v1/security/oauth2/token', new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: AMADEUS_API_KEY,
+    client_secret: AMADEUS_API_SECRET
+  }), {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+  return res.data.access_token;
+}
+
+// Middleware to refresh token if needed
+async function ensureAccessToken() {
+  if (!amadeusAccessToken) {
+    amadeusAccessToken = await getAmadeusAccessToken();
+  }
+}
+
+// Flights route
 app.get('/flights', async (req, res) => {
+  const { origin, destination, departureDate } = req.query;
+
   try {
-    const { origin, destination, departureDate, returnDate } = req.query;
+    await ensureAccessToken();
+    const flightsRes = await axios.get('https://test.api.amadeus.com/v2/shopping/flight-offers', {
+      headers: { Authorization: `Bearer ${amadeusAccessToken}` },
+      params: {
+        originLocationCode: origin,
+        destinationLocationCode: destination,
+        departureDate: departureDate,
+        adults: 1,
+        max: 5
+      }
+    });
 
-    if (!origin || !destination || !departureDate) {
-      return res.status(400).json({ error: 'origin, destination, and departureDate are required query parameters' });
-    }
-
-    const params = {
-      originLocationCode: origin.toUpperCase(),
-      destinationLocationCode: destination.toUpperCase(),
-      departureDate,
-      adults: 1,
-      max: 5,
-    };
-
-    if (returnDate) {
-      params.returnDate = returnDate;
-    }
-
-    const response = await amadeus.shopping.flightOffersSearch.get(params);
-    res.json(response.data);
+    res.json(flightsRes.data);
   } catch (error) {
     console.error('Error fetching flights:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to fetch flights', details: error.response?.data || error.message });
+    res.status(500).json({ error: 'Error fetching flights' });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
