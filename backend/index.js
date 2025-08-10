@@ -291,16 +291,40 @@ app.get('/flights', async (req, res) => {
   try {
     await ensureAmadeusAccessToken();
 
-    const flightsRes = await axios.get('https://test.api.amadeus.com/v2/shopping/flight-offers', {
-      headers: { Authorization: `Bearer ${amadeusAccessToken}` },
-      params: {
-        originLocationCode: origin,
-        destinationLocationCode: destination,
-        departureDate: departureDate,
-        adults: 1,
-        max: 5
+    const requestBody = {
+      currencyCode: 'USD',
+      originDestinations: [
+        {
+          id: '1',
+          originLocationCode: origin,
+          destinationLocationCode: destination,
+          departureDateTimeRange: {
+            date: departureDate
+          }
+        }
+      ],
+      travelers: [
+        {
+          id: '1',
+          travelerType: 'ADULT'
+        }
+      ],
+      sources: ['GDS'],
+      searchCriteria: {
+        maxFlightOffers: 5
       }
-    });
+    };
+
+    const flightsRes = await axios.post(
+      'https://test.api.amadeus.com/v2/shopping/flight-offers',
+      requestBody,
+      {
+        headers: { 
+          Authorization: `Bearer ${amadeusAccessToken}`,
+          'Content-Type': 'application/vnd.amadeus+json'
+        }
+      }
+    );
 
     res.json(flightsRes.data);
   } catch (error) {
@@ -308,6 +332,7 @@ app.get('/flights', async (req, res) => {
     res.status(500).json({ error: 'Error fetching flights' });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
