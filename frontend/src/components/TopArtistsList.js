@@ -2,24 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import stateToAirports from './StateToAirports';
 
-// Move mapping outside component so it's not recreated on each render
-const stateAbbrevToFull = {
-  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
-  CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
-  DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii",
-  ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
-  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine",
-  MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
-  MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
-  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
-  NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
-  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island",
-  SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
-  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
-  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
-};
-
-const TopArtistsList = ({ topArtists }) => {
+const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
   const [expandedArtists, setExpandedArtists] = useState({});
   const [loading, setLoading] = useState(false);
@@ -39,8 +22,9 @@ const TopArtistsList = ({ topArtists }) => {
     }));
   };
 
+  // Helper to normalize strings to Title Case (handles multi-word states)
   const toTitleCase = (str) => {
-    if (!str) return null;
+    if (!str) return '';
     return str
       .trim()
       .toLowerCase()
@@ -52,9 +36,24 @@ const TopArtistsList = ({ topArtists }) => {
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  useEffect(() => {
-    let isMounted = true; // to prevent state update if component unmounts
+  // Add this mapping near the top of your component file (outside the component)
+  const stateAbbrevToFull = {
+    AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
+    CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
+    DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii",
+    ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+    KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine",
+    MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+    MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
+    NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
+    NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+    OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island",
+    SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+    UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
+    WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
+  };
 
+  useEffect(() => {
     const fetchConcerts = async () => {
       setLoading(true);
       setError(null);
@@ -62,9 +61,8 @@ const TopArtistsList = ({ topArtists }) => {
 
       for (const [index, artist] of topArtists.entries()) {
         try {
-          if (!isMounted) return; // stop if unmounted
-
           if (index > 0) {
+            // Delay 300ms between requests to avoid spike arrest
             await delay(300);
           }
 
@@ -82,28 +80,24 @@ const TopArtistsList = ({ topArtists }) => {
         } catch (error) {
           data[artist.name] = [];
           console.error(`Concert fetch error for ${artist.name}:`, error);
-          if (isMounted) setError(error.message); // only if mounted
+          setError(error.message); // optionally show error to user
         }
       }
 
-      if (isMounted) {
-        setConcertData(data);
-        setLoading(false);
-      }
+      setConcertData(data);
+      setLoading(false);
     };
 
     if (topArtists.length > 0) {
       fetchConcerts();
     }
-
-    return () => {
-      isMounted = false;
-    };
   }, [topArtists]);
+
 
   const fetchFlightsForEvent = async (event) => {
     const { state, date, country, id } = event;
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
+
+    console.log('Show flights clicked for event:', event);
 
     if (!date) {
       alert('Missing concert date to fetch flights.');
@@ -116,15 +110,22 @@ const TopArtistsList = ({ topArtists }) => {
       return;
     }
 
+    console.log('Original event location:', { state, country });
+
     let normalizedState = toTitleCase(state);
     if (state && state.length === 2) {
       normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
     }
     const normalizedCountry = toTitleCase(country);
 
+    console.log('Normalized State:', normalizedState);
+    console.log('Normalized Country:', normalizedCountry);
+
     const destinationAirports =
       (normalizedState && stateToAirports[normalizedState]) ||
       (normalizedCountry && stateToAirports[normalizedCountry]);
+
+    console.log('Destination Airports:', destinationAirports);
 
     if (!destinationAirports || destinationAirports.length === 0) {
       alert(`No airport codes found for ${state || country}.`);
@@ -143,6 +144,7 @@ const TopArtistsList = ({ topArtists }) => {
     setErrorFlights(prev => ({ ...prev, [id]: null }));
 
     try {
+      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
       const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
       const res = await fetch(url);
 
@@ -153,7 +155,6 @@ const TopArtistsList = ({ topArtists }) => {
 
       const json = await res.json();
 
-      // Your backend returns { data: [...] } so update accordingly
       setFlightOffers(prev => ({
         ...prev,
         [id]: json.data || []
@@ -166,6 +167,7 @@ const TopArtistsList = ({ topArtists }) => {
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
   };
+
 
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
@@ -220,16 +222,15 @@ const TopArtistsList = ({ topArtists }) => {
         {topArtists.map((artist, index) => {
           const concerts = concertData[artist.name] || [];
 
-          // null safe location filter check
           const filteredConcerts = concerts.filter(event => {
             const query = locationFilter.toLowerCase();
             return (
               !locationFilter ||
-              (event.city?.toLowerCase().includes(query)) ||
-              (event.state?.toLowerCase().includes(query)) ||
-              (event.country?.toLowerCase().includes(query)) ||
-              (event.venue?.toLowerCase().includes(query)) ||
-              (event.name?.toLowerCase().includes(query))
+              (event.city && event.city.toLowerCase().includes(query)) ||
+              (event.state && event.state.toLowerCase().includes(query)) ||
+              (event.country && event.country.toLowerCase().includes(query)) ||
+              (event.venue && event.venue.toLowerCase().includes(query)) ||
+              (event.name && event.name.toLowerCase().includes(query))
             );
           });
 
@@ -282,7 +283,8 @@ const TopArtistsList = ({ topArtists }) => {
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation();
+                                  e.stopPropagation(); // prevent any parent click events
+                                  console.log('Show flights clicked for event ID:', event.id);
                                   if (!loadingFlights[event.id]) {
                                     fetchFlightsForEvent(event);
                                   }
@@ -310,9 +312,9 @@ const TopArtistsList = ({ topArtists }) => {
                               <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
                                 {flightOffers[event.id].map((flight, idx) => (
                                   <li key={idx} style={{ fontSize: '0.9rem' }}>
-                                    Airline: {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} |{" "}
-                                    Price: ${flight.price?.total} |{" "}
-                                    Depart: {new Date(flight.itineraries?.[0]?.segments?.[0]?.departure?.at).toLocaleString()} |{" "}
+                                    Airline: {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} | 
+                                    Price: ${flight.price?.total} | 
+                                    Depart: {new Date(flight.itineraries?.[0]?.segments?.[0]?.departure?.at).toLocaleString()} | 
                                     Arrive: {new Date(flight.itineraries?.[0]?.segments?.[0]?.arrival?.at).toLocaleString()}
                                   </li>
                                 ))}
