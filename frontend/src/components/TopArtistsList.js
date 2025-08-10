@@ -4,13 +4,15 @@ import stateToAirports from './StateToAirports';
 
 console.log('Raw stateToAirports:', stateToAirports);
 
-// Helper to normalize keys: lowercase + remove spaces
-const normalizeKey = (str) => str.toLowerCase().replace(/\s+/g, '');
+// Normalize keys by just lowercasing (keep spaces intact)
+const normalizeKey = (str) => str.toLowerCase();
 
-// Normalize the stateToAirports keys once at module level using normalizeKey
+// Normalize the stateToAirports keys once at module level
 const normalizedStateToAirports = Object.fromEntries(
   Object.entries(stateToAirports).map(([stateName, airports]) => [normalizeKey(stateName), airports])
 );
+
+console.log('Normalized keys:', Object.keys(normalizedStateToAirports));
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
@@ -20,7 +22,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [locationFilter, setLocationFilter] = useState('');
   const [originAirport, setOriginAirport] = useState('SFO');
 
-  // Flight offers states per event
   const [flightOffers, setFlightOffers] = useState({});
   const [loadingFlights, setLoadingFlights] = useState({});
   const [errorFlights, setErrorFlights] = useState({});
@@ -133,10 +134,16 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   
     console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
   
-    // Lookup using normalizeKey (lowercase + remove spaces)
+    // Use lowercase keys without removing spaces for lookup
+    const lookupKeyState = normalizeKey(normalizedState);
+    const lookupKeyCountry = normalizeKey(normalizedCountry);
+  
+    console.log('Lookup Key State:', lookupKeyState);
+    console.log('Lookup Key Country:', lookupKeyCountry);
+  
     const destinationAirports =
-      (normalizedState && normalizedStateToAirports[normalizeKey(normalizedState)]) ||
-      (normalizedCountry && normalizedStateToAirports[normalizeKey(normalizedCountry)]);
+      (normalizedState && normalizedStateToAirports[lookupKeyState]) ||
+      (normalizedCountry && normalizedStateToAirports[lookupKeyCountry]);
   
     console.log('Destination Airports:', destinationAirports);
   
