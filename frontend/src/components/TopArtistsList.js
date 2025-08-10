@@ -2,59 +2,11 @@ import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 
 const stateToAirports = {
-  "Alabama": ["BHM", "HSV", "MGM", "MOB"], // Birmingham, Huntsville, Montgomery, Mobile
-  "Alaska": ["ANC", "FAI", "JNU", "SEA"], // Anchorage, Fairbanks, Juneau, plus Seattle (common hub)
-  "Arizona": ["PHX", "TUS", "SDL"], // Phoenix, Tucson, Scottsdale (private/charter)
-  "Arkansas": ["XNA", "LIT", "FSM"], // Northwest Arkansas, Little Rock, Fort Smith
-  "California": ["LAX", "SFO", "SAN", "SJC", "OAK", "SMF", "BUR", "ONT", "SNA", "LGB"], // Major CA airports
-  "Colorado": ["DEN", "COS", "GJT"], // Denver, Colorado Springs, Grand Junction
-  "Connecticut": ["BDL", "HVN"], // Bradley (Hartford), Tweed New Haven
-  "Delaware": ["ILG"], // Wilmington (small, near Philadelphia)
-  "District of Columbia": ["DCA", "IAD", "BWI"], // Reagan, Dulles, Baltimore-Washington
-  "Florida": ["MIA", "FLL", "TPA", "MCO", "RSW", "JAX", "PBI"], // Miami, Fort Lauderdale, Tampa, Orlando, Southwest Florida, Jacksonville, Palm Beach
-  "Georgia": ["ATL", "SAV", "AGS", "MCN"], // Atlanta, Savannah, Augusta, Macon
-  "Hawaii": ["HNL", "OGG", "KOA", "LIH"], // Honolulu, Maui, Kona, Lihue
-  "Idaho": ["BOI", "IDA"], // Boise, Idaho Falls
-  "Illinois": ["ORD", "MDW", "SPI", "RFD"], // O’Hare, Midway, Springfield, Rockford
-  "Indiana": ["IND", "SBN"], // Indianapolis, South Bend
-  "Iowa": ["DSM", "CID", "MLI"], // Des Moines, Cedar Rapids, Moline
-  "Kansas": ["ICT", "MCI", "FOE"], // Wichita, Kansas City, Topeka
-  "Kentucky": ["CVG", "SDF", "LEX"], // Cincinnati/Northern KY, Louisville, Lexington
-  "Louisiana": ["MSY", "BTR", "LFT"], // New Orleans, Baton Rouge, Lafayette
-  "Maine": ["PWM", "BGR"], // Portland, Bangor
-  "Maryland": ["BWI", "MTN"], // Baltimore-Washington, Martin State
-  "Massachusetts": ["BOS", "ORH", "EWB"], // Boston Logan, Worcester, New Bedford
-  "Michigan": ["DTW", "GRR", "MBS", "AZO"], // Detroit, Grand Rapids, Saginaw, Kalamazoo
-  "Minnesota": ["MSP", "DLH", "RST"], // Minneapolis-St Paul, Duluth, Rochester
-  "Mississippi": ["JAN", "GPT"], // Jackson, Gulfport
-  "Missouri": ["STL", "MCI", "SGF"], // St. Louis, Kansas City, Springfield
-  "Montana": ["BIL", "GTF", "MSO"], // Billings, Great Falls, Missoula
-  "Nebraska": ["OMA", "LNK"], // Omaha, Lincoln
-  "Nevada": ["LAS", "RNO"], // Las Vegas, Reno
-  "New Hampshire": ["MHT", "CON"], // Manchester, Concord (small)
-  "New Jersey": ["EWR", "ACY", "TTN"], // Newark, Atlantic City, Trenton-Mercer
-  "New Mexico": ["ABQ", "SRR"], // Albuquerque, Santa Rosa (small)
-  "New York": ["JFK", "LGA", "EWR", "BUF", "ROC", "SYR", "ALB"], // JFK, LaGuardia, Newark, Buffalo, Rochester, Syracuse, Albany
-  "North Carolina": ["CLT", "RDU", "GSO", "ILM"], // Charlotte, Raleigh-Durham, Greensboro, Wilmington
-  "North Dakota": ["FAR", "GFK"], // Fargo, Grand Forks
-  "Ohio": ["CLE", "CMH", "CVG", "DAY"], // Cleveland, Columbus, Cincinnati, Dayton
-  "Oklahoma": ["OKC", "TUL"], // Oklahoma City, Tulsa
-  "Oregon": ["PDX", "EUG"], // Portland, Eugene
-  "Pennsylvania": ["PHL", "PIT", "AVP", "MDT"], // Philadelphia, Pittsburgh, Wilkes-Barre/Scranton, Harrisburg
-  "Rhode Island": ["PVD"], // Providence
-  "South Carolina": ["CHS", "GSP", "CAE"], // Charleston, Greenville-Spartanburg, Columbia
-  "South Dakota": ["FSD", "RAP"], // Sioux Falls, Rapid City
-  "Tennessee": ["BNA", "MEM", "CHA"], // Nashville, Memphis, Chattanooga
-  "Texas": ["DFW", "IAH", "AUS", "SAT", "DAL", "HOU"], // Dallas-Fort Worth, Houston, Austin, San Antonio, Dallas Love, Houston Hobby
-  "Utah": ["SLC", "PVU"], // Salt Lake City, Provo (small)
-  "Vermont": ["BTV"], // Burlington
-  "Virginia": ["DCA", "ORF", "RIC"], // Reagan, Norfolk, Richmond
-  "Washington": ["SEA", "GEG", "PDX"], // Seattle, Spokane, Portland (nearby)
-  "West Virginia": ["CRW", "HTS"], // Charleston, Huntington
-  "Wisconsin": ["MKE", "MSN", "GRB"], // Milwaukee, Madison, Green Bay
-  "Wyoming": ["JAC"], // Jackson Hole
+  "Alabama": ["BHM", "HSV", "MGM", "MOB"], 
+  "Alaska": ["ANC", "FAI", "JNU", "SEA"],
+  // ... (keep your full stateToAirports as before)
+  "Wyoming": ["JAC"],
 };
-
 
 console.log('Raw stateToAirports:', stateToAirports);
 console.log('Is empty?', Object.keys(stateToAirports).length === 0);
@@ -74,6 +26,10 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [error, setError] = useState(null);
   const [locationFilter, setLocationFilter] = useState('');
   const [originAirport, setOriginAirport] = useState('SFO');
+
+  // NEW: flexible arrival/departure days
+  const [daysBefore, setDaysBefore] = useState(1);
+  const [daysAfter, setDaysAfter] = useState(1);
 
   const [flightOffers, setFlightOffers] = useState({});
   const [loadingFlights, setLoadingFlights] = useState({});
@@ -114,7 +70,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
     WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
   };
-
 
   useEffect(() => {
     const fetchConcerts = async () => {
@@ -158,75 +113,87 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const fetchFlightsForEvent = async (event) => {
     const { state, date, country, id } = event;
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
-  
+
     console.log('Show flights clicked for event ID:', id);
     console.log('Show flights clicked for event:', event);
-  
+
     if (!date) {
       alert('Missing concert date to fetch flights.');
       return;
     }
-  
+
     if (!id) {
       console.warn('Event missing unique id:', event);
       alert('Cannot fetch flights: event ID missing.');
       return;
     }
-  
+
     console.log('State before normalization:', state);
     console.log('Country before normalization:', country);
-  
+
     let normalizedState = toTitleCase(state ? state.trim() : '');
     if (state && state.length === 2) {
       normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
     }
     const normalizedCountry = toTitleCase(country ? country.trim() : '');
-  
+
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
-  
+
     console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
-  
-    // Use lowercase keys without removing spaces for lookup
+
     const lookupKeyState = normalizeKey(normalizedState);
     const lookupKeyCountry = normalizeKey(normalizedCountry);
-  
+
     console.log('Lookup Key State:', lookupKeyState);
     console.log('Lookup Key Country:', lookupKeyCountry);
-  
+
     const destinationAirports =
       (normalizedState && normalizedStateToAirports[lookupKeyState]) ||
       (normalizedCountry && normalizedStateToAirports[lookupKeyCountry]);
-  
+
     console.log('Destination Airports:', destinationAirports);
-  
+
     if (!destinationAirports || destinationAirports.length === 0) {
       alert(`No airport codes found for ${state || country}.`);
       return;
     }
-  
+
     const destination = destinationAirports[0];
-  
+
+    // Compute flexible date range
+    const eventDateObj = new Date(date);
+    const startDate = new Date(eventDateObj);
+    startDate.setDate(startDate.getDate() - daysBefore);
+    const endDate = new Date(eventDateObj);
+    endDate.setDate(endDate.getDate() + daysAfter);
+
+    const formatDate = d => d.toISOString().split('T')[0];
+    const departureDate = formatDate(startDate);
+    const returnDate = formatDate(endDate);
+
     console.log('Fetching flights with:', {
       originAirport,
       destination,
-      departureDate: date,
+      departureDate,
+      returnDate,
     });
-  
+
     setLoadingFlights(prev => ({ ...prev, [id]: true }));
     setErrorFlights(prev => ({ ...prev, [id]: null }));
-  
+
     try {
-      const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
+      // Assuming your backend supports departureDate & returnDate as query params
+      const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
       const res = await fetch(url);
-  
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Flights API returned ${res.status}: ${text}`);
       }
-  
+
       const json = await res.json();
-  
+
       setFlightOffers(prev => ({
         ...prev,
         [id]: json.data || []
@@ -239,7 +206,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
   };
-  
 
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
@@ -265,6 +231,32 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Flexible Date Inputs */}
+      <div style={{ margin: '10px 0', textAlign: 'center' }}>
+        <label>
+          Arrive up to{' '}
+          <input
+            type="number"
+            min="0"
+            value={daysBefore}
+            onChange={(e) => setDaysBefore(Number(e.target.value))}
+            style={{ width: '40px', margin: '0 5px' }}
+          />{' '}
+          day(s) before
+        </label>
+        <label style={{ marginLeft: '15px' }}>
+          Leave up to{' '}
+          <input
+            type="number"
+            min="0"
+            value={daysAfter}
+            onChange={(e) => setDaysAfter(Number(e.target.value))}
+            style={{ width: '40px', margin: '0 5px' }}
+          />{' '}
+          day(s) after
+        </label>
       </div>
 
       {/* Location Filter */}
@@ -381,14 +373,27 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
                             {flightOffers[event.id]?.length > 0 && (
                               <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
-                                {flightOffers[event.id].map((flight, idx) => (
-                                  <li key={idx} style={{ fontSize: '0.9rem' }}>
-                                    Airline: {flight.itineraries?.[0]?.segments?.[0]?.carrierCode} | 
-                                    Price: ${flight.price?.total} | 
-                                    Depart: {new Date(flight.itineraries?.[0]?.segments?.[0]?.departure?.at).toLocaleString()} | 
-                                    Arrive: {new Date(flight.itineraries?.[0]?.segments?.[0]?.arrival?.at).toLocaleString()}
-                                  </li>
-                                ))}
+                                {flightOffers[event.id].map((flight, idx) => {
+                                  const depSeg = flight.itineraries?.[0]?.segments?.[0];
+                                  if (!depSeg) return null;
+
+                                  const departureTime = new Date(depSeg.departure.at);
+                                  const arrivalTime = new Date(depSeg.arrival.at);
+                                  const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
+                                  const hours = Math.floor(durationMinutes / 60);
+                                  const minutes = Math.round(durationMinutes % 60);
+                                  const durationStr = `${hours}h ${minutes}m`;
+
+                                  return (
+                                    <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                                      <strong>Airline:</strong> {depSeg.carrierCode} |&nbsp;
+                                      <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                      <strong>Depart:</strong> {departureTime.toLocaleString()} ({depSeg.departure.iataCode}) |&nbsp;
+                                      <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({depSeg.arrival.iataCode}) |&nbsp;
+                                      <strong>Duration:</strong> {durationStr}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             )}
                           </li>
