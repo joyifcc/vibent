@@ -15,6 +15,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [loadingFlights, setLoadingFlights] = useState({});
   const [errorFlights, setErrorFlights] = useState({});
 
+  const normalizedStateToAirports = {};
+  Object.entries(stateToAirports).forEach(([stateName, airports]) => {
+    normalizedStateToAirports[stateName.toLowerCase()] = airports;
+  });
+
   const toggleExpanded = (artistName) => {
     setExpandedArtists(prev => ({
       ...prev,
@@ -22,7 +27,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }));
   };
 
-  // Helper to normalize strings to Title Case (handles multi-word states)
   const toTitleCase = (str) => {
     if (!str) return '';
     return str
@@ -36,7 +40,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Add this mapping near the top of your component file (outside the component)
   const stateAbbrevToFull = {
     AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
     CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
@@ -53,6 +56,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
   };
 
+
   useEffect(() => {
     const fetchConcerts = async () => {
       setLoading(true);
@@ -62,7 +66,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       for (const [index, artist] of topArtists.entries()) {
         try {
           if (index > 0) {
-            // Delay 300ms between requests to avoid spike arrest
             await delay(300);
           }
 
@@ -80,7 +83,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
         } catch (error) {
           data[artist.name] = [];
           console.error(`Concert fetch error for ${artist.name}:`, error);
-          setError(error.message); // optionally show error to user
+          setError(error.message);
         }
       }
 
@@ -93,10 +96,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   }, [topArtists]);
 
-
   const fetchFlightsForEvent = async (event) => {
     const { state, date, country, id } = event;
+    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
+    console.log('Show flights clicked for event ID:', id);
     console.log('Show flights clicked for event:', event);
 
     if (!date) {
@@ -110,20 +114,20 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       return;
     }
 
-    console.log('Original event location:', { state, country });
-
     let normalizedState = toTitleCase(state);
     if (state && state.length === 2) {
       normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
     }
     const normalizedCountry = toTitleCase(country);
 
+    console.log('Original event location:', { state, country });
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
 
+    // Use lowercase keys for lookup
     const destinationAirports =
-      (normalizedState && stateToAirports[normalizedState]) ||
-      (normalizedCountry && stateToAirports[normalizedCountry]);
+      (normalizedState && normalizedStateToAirports[normalizedState.toLowerCase()]) ||
+      (normalizedCountry && normalizedStateToAirports[normalizedCountry.toLowerCase()]);
 
     console.log('Destination Airports:', destinationAirports);
 
@@ -144,7 +148,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     setErrorFlights(prev => ({ ...prev, [id]: null }));
 
     try {
-      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
       const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
       const res = await fetch(url);
 
@@ -167,7 +170,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
   };
-
 
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
