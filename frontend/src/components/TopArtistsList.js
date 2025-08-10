@@ -101,22 +101,12 @@ const fetchFlightsForEvent = async (event) => {
     return;
   }
 
-  // Helper to normalize string to Title Case
-  const toTitleCase = (str) => {
-    if (!str) return null;
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  };
-
-  // Normalize state and convert abbreviation to full name if needed
   let normalizedState = toTitleCase(state);
-
   if (state && state.length === 2) {
     normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
   }
-
   const normalizedCountry = toTitleCase(country);
 
-  // Lookup airports by normalized state or fallback to normalized country
   const destinationAirports =
     (normalizedState && stateToAirports[normalizedState]) ||
     (normalizedCountry && stateToAirports[normalizedCountry]);
@@ -127,6 +117,12 @@ const fetchFlightsForEvent = async (event) => {
   }
 
   const destination = destinationAirports[0];
+
+  console.log('Fetching flights with:', {
+    originAirport,
+    destination,
+    departureDate: date,
+  });
 
   setLoadingFlights(prev => ({ ...prev, [id]: true }));
   setErrorFlights(prev => ({ ...prev, [id]: null }));
@@ -154,6 +150,7 @@ const fetchFlightsForEvent = async (event) => {
     setLoadingFlights(prev => ({ ...prev, [id]: false }));
   }
 };
+
 
 
   // Flatten and deduplicate airport codes for origin airport dropdown
