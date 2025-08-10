@@ -22,10 +22,16 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }));
   };
 
-  // Helper to normalize state strings to Title Case
+  // Helper to normalize strings to Title Case (handles multi-word states)
   const toTitleCase = (str) => {
     if (!str) return null;
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    return str
+      .trim()
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   useEffect(() => {
@@ -71,11 +77,14 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       return;
     }
 
-    // Normalize state name to Title Case before lookup
+    // Normalize state and country strings
     const normalizedState = toTitleCase(state);
+    const normalizedCountry = toTitleCase(country);
 
-    // Lookup airports by state or fallback to country
-    const destinationAirports = (normalizedState && stateToAirports[normalizedState]) || stateToAirports[country];
+    // Lookup airports by normalized state or fallback to normalized country
+    const destinationAirports =
+      (normalizedState && stateToAirports[normalizedState]) ||
+      (normalizedCountry && stateToAirports[normalizedCountry]);
 
     if (!destinationAirports || destinationAirports.length === 0) {
       alert(`No airport codes found for ${state || country}.`);
