@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import stateToAirports from './StateToAirports';
+import stateAbbrevToFull from './StateAbbr';
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
@@ -68,58 +69,92 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   }, [topArtists]);
 
-  const fetchFlightsForEvent = async (event) => {
-    const { state, date, country } = event;
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
+// Add this mapping near the top of your component file (outside the component)
+const stateAbbrevToFull = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas",
+  CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware",
+  DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii",
+  ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine",
+  MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota",
+  MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
+  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico",
+  NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island",
+  SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
+  WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
+};
 
-    if (!date) {
-      alert('Missing concert date to fetch flights.');
-      return;
-    }
+const fetchFlightsForEvent = async (event) => {
+  const { state, date, country, id } = event;
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
 
-    // Normalize state and country strings
-    const normalizedState = toTitleCase(state);
-    const normalizedCountry = toTitleCase(country);
+  if (!date) {
+    alert('Missing concert date to fetch flights.');
+    return;
+  }
 
-    // Lookup airports by normalized state or fallback to normalized country
-    const destinationAirports =
-      (normalizedState && stateToAirports[normalizedState]) ||
-      (normalizedCountry && stateToAirports[normalizedCountry]);
+  if (!id) {
+    console.warn('Event missing unique id:', event);
+    alert('Cannot fetch flights: event ID missing.');
+    return;
+  }
 
-    if (!destinationAirports || destinationAirports.length === 0) {
-      alert(`No airport codes found for ${state || country}.`);
-      return;
-    }
-
-    // Pick first airport for now
-    const destination = destinationAirports[0];
-
-    setLoadingFlights(prev => ({ ...prev, [event.id]: true }));
-    setErrorFlights(prev => ({ ...prev, [event.id]: null }));
-
-    try {
-      const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Flights API returned ${res.status}: ${text}`);
-      }
-
-      const json = await res.json();
-
-      setFlightOffers(prev => ({
-        ...prev,
-        [event.id]: json.data || []
-      }));
-    } catch (error) {
-      console.error(`Error fetching flights for event ${event.id}:`, error);
-      setErrorFlights(prev => ({ ...prev, [event.id]: error.message }));
-      setFlightOffers(prev => ({ ...prev, [event.id]: [] }));
-    } finally {
-      setLoadingFlights(prev => ({ ...prev, [event.id]: false }));
-    }
+  // Helper to normalize string to Title Case
+  const toTitleCase = (str) => {
+    if (!str) return null;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
+
+  // Normalize state and convert abbreviation to full name if needed
+  let normalizedState = toTitleCase(state);
+
+  if (state && state.length === 2) {
+    normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
+  }
+
+  const normalizedCountry = toTitleCase(country);
+
+  // Lookup airports by normalized state or fallback to normalized country
+  const destinationAirports =
+    (normalizedState && stateToAirports[normalizedState]) ||
+    (normalizedCountry && stateToAirports[normalizedCountry]);
+
+  if (!destinationAirports || destinationAirports.length === 0) {
+    alert(`No airport codes found for ${state || country}.`);
+    return;
+  }
+
+  const destination = destinationAirports[0];
+
+  setLoadingFlights(prev => ({ ...prev, [id]: true }));
+  setErrorFlights(prev => ({ ...prev, [id]: null }));
+
+  try {
+    const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Flights API returned ${res.status}: ${text}`);
+    }
+
+    const json = await res.json();
+
+    setFlightOffers(prev => ({
+      ...prev,
+      [id]: json.data || []
+    }));
+  } catch (error) {
+    console.error(`Error fetching flights for event ${id}:`, error);
+    setErrorFlights(prev => ({ ...prev, [id]: error.message }));
+    setFlightOffers(prev => ({ ...prev, [id]: [] }));
+  } finally {
+    setLoadingFlights(prev => ({ ...prev, [id]: false }));
+  }
+};
+
 
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
