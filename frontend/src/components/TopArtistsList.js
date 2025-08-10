@@ -2,6 +2,11 @@ import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import stateToAirports from './StateToAirports';
 
+// Normalize the stateToAirports keys once at module level
+const normalizedStateToAirports = Object.fromEntries(
+  Object.entries(stateToAirports).map(([stateName, airports]) => [stateName.toLowerCase(), airports])
+);
+
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
   const [expandedArtists, setExpandedArtists] = useState({});
@@ -14,11 +19,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [flightOffers, setFlightOffers] = useState({});
   const [loadingFlights, setLoadingFlights] = useState({});
   const [errorFlights, setErrorFlights] = useState({});
-
-  const normalizedStateToAirports = {};
-  Object.entries(stateToAirports).forEach(([stateName, airports]) => {
-    normalizedStateToAirports[stateName.toLowerCase()] = airports;
-  });
 
   const toggleExpanded = (artistName) => {
     setExpandedArtists(prev => ({
@@ -289,8 +289,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               <button
                                 type="button"
                                 onClick={(e) => {
-                                  e.stopPropagation(); // prevent any parent click events
-                                  console.log('Show flights clicked for event ID:', event.id);
+                                  e.stopPropagation();
                                   if (!loadingFlights[event.id]) {
                                     fetchFlightsForEvent(event);
                                   }
