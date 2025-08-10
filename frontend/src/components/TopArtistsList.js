@@ -99,65 +99,68 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const fetchFlightsForEvent = async (event) => {
     const { state, date, country, id } = event;
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
-
+  
     console.log('Show flights clicked for event ID:', id);
     console.log('Show flights clicked for event:', event);
-
+  
     if (!date) {
       alert('Missing concert date to fetch flights.');
       return;
     }
-
+  
     if (!id) {
       console.warn('Event missing unique id:', event);
       alert('Cannot fetch flights: event ID missing.');
       return;
     }
-
-    let normalizedState = toTitleCase(state);
+  
+    console.log('State before normalization:', state);
+    console.log('Country before normalization:', country);
+  
+    let normalizedState = toTitleCase(state ? state.trim() : '');
     if (state && state.length === 2) {
       normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
     }
-    const normalizedCountry = toTitleCase(country);
-
-    console.log('Original event location:', { state, country });
+    const normalizedCountry = toTitleCase(country ? country.trim() : '');
+  
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
-
-    // Use lowercase keys for lookup
+  
+    console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
+  
     const destinationAirports =
       (normalizedState && normalizedStateToAirports[normalizedState.toLowerCase()]) ||
       (normalizedCountry && normalizedStateToAirports[normalizedCountry.toLowerCase()]);
-
+  
     console.log('Destination Airports:', destinationAirports);
-
+  
     if (!destinationAirports || destinationAirports.length === 0) {
       alert(`No airport codes found for ${state || country}.`);
       return;
     }
-
+  
     const destination = destinationAirports[0];
-
+  
     console.log('Fetching flights with:', {
       originAirport,
       destination,
       departureDate: date,
     });
-
+  
     setLoadingFlights(prev => ({ ...prev, [id]: true }));
     setErrorFlights(prev => ({ ...prev, [id]: null }));
-
+  
     try {
       const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${date}`;
       const res = await fetch(url);
-
+  
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Flights API returned ${res.status}: ${text}`);
       }
-
+  
       const json = await res.json();
-
+  
       setFlightOffers(prev => ({
         ...prev,
         [id]: json.data || []
@@ -170,6 +173,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
   };
+  
 
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
