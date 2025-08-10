@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import stateToAirports from './StateToAirports';
-import stateAbbrevToFull from './StateAbbr';
+
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
@@ -268,10 +268,16 @@ const fetchFlightsForEvent = async (event) => {
                             {/* Show Flights */}
                             <div style={{ marginTop: '8px' }}>
                               <button
-                                onClick={() => fetchFlightsForEvent(event)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // prevent any parent click events
+                                  if (!loadingFlights[event.id]) {
+                                    fetchFlightsForEvent(event);
+                                  }
+                                }}
                                 disabled={loadingFlights[event.id]}
                                 style={{
-                                  backgroundColor: '#0070f3',
+                                  backgroundColor: loadingFlights[event.id] ? '#555' : '#0070f3',
                                   color: 'white',
                                   border: 'none',
                                   padding: '5px 10px',
@@ -283,6 +289,7 @@ const fetchFlightsForEvent = async (event) => {
                                 {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
                               </button>
                             </div>
+
 
                             {errorFlights[event.id] && (
                               <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
