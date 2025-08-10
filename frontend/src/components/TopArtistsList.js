@@ -2,9 +2,14 @@ import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import stateToAirports from './StateToAirports';
 
-// Normalize the stateToAirports keys once at module level
+console.log('Raw stateToAirports:', stateToAirports);
+
+// Helper to normalize keys: lowercase + remove spaces
+const normalizeKey = (str) => str.toLowerCase().replace(/\s+/g, '');
+
+// Normalize the stateToAirports keys once at module level using normalizeKey
 const normalizedStateToAirports = Object.fromEntries(
-  Object.entries(stateToAirports).map(([stateName, airports]) => [stateName.toLowerCase(), airports])
+  Object.entries(stateToAirports).map(([stateName, airports]) => [normalizeKey(stateName), airports])
 );
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
@@ -128,9 +133,10 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   
     console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
   
+    // Lookup using normalizeKey (lowercase + remove spaces)
     const destinationAirports =
-      (normalizedState && normalizedStateToAirports[normalizedState.toLowerCase()]) ||
-      (normalizedCountry && normalizedStateToAirports[normalizedCountry.toLowerCase()]);
+      (normalizedState && normalizedStateToAirports[normalizeKey(normalizedState)]) ||
+      (normalizedCountry && normalizedStateToAirports[normalizeKey(normalizedCountry)]);
   
     console.log('Destination Airports:', destinationAirports);
   
