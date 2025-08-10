@@ -35,39 +35,47 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       .join(' ');
   };
 
-  useEffect(() => {
-    const fetchConcerts = async () => {
-      setLoading(true);
-      setError(null);
-      const data = {};
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-      for (const artist of topArtists) {
-        try {
-          const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
-          const url = `${BACKEND_URL}/concerts?artistName=${encodeURIComponent(artist.name)}`;
-          const res = await fetch(url);
+useEffect(() => {
+  const fetchConcerts = async () => {
+    setLoading(true);
+    setError(null);
+    const data = {};
 
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`API returned ${res.status}: ${text}`);
-          }
-
-          const json = await res.json();
-          data[artist.name] = Array.isArray(json.events) ? json.events : [];
-        } catch (error) {
-          data[artist.name] = [];
-          console.error(`Concert fetch error for ${artist.name}:`, error);
+    for (const [index, artist] of topArtists.entries()) {
+      try {
+        if (index > 0) {
+          // Delay 300ms between requests to avoid spike arrest
+          await delay(300);
         }
+
+        const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
+        const url = `${BACKEND_URL}/concerts?artistName=${encodeURIComponent(artist.name)}`;
+        const res = await fetch(url);
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API returned ${res.status}: ${text}`);
+        }
+
+        const json = await res.json();
+        data[artist.name] = Array.isArray(json.events) ? json.events : [];
+      } catch (error) {
+        data[artist.name] = [];
+        console.error(`Concert fetch error for ${artist.name}:`, error);
+        setError(error.message); // optionally show error to user
       }
-
-      setConcertData(data);
-      setLoading(false);
-    };
-
-    if (topArtists.length > 0) {
-      fetchConcerts();
     }
-  }, [topArtists]);
+
+    setConcertData(data);
+    setLoading(false);
+  };
+
+  if (topArtists.length > 0) {
+    fetchConcerts();
+  }
+}, [topArtists]);
 
 // Add this mapping near the top of your component file (outside the component)
 const stateAbbrevToFull = {
@@ -150,7 +158,6 @@ const fetchFlightsForEvent = async (event) => {
     setLoadingFlights(prev => ({ ...prev, [id]: false }));
   }
 };
-
 
 
   // Flatten and deduplicate airport codes for origin airport dropdown
