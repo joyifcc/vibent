@@ -175,9 +175,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       return;
     }
   
-    console.log('State before normalization:', state);
-    console.log('Country before normalization:', country);
-  
     // Normalize and map state abbrev to full state name first
     let normalizedState = '';
     if (state) {
@@ -192,8 +189,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
-  
-    console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
   
     const lookupKeyState = normalizeKey(normalizedState);
     const lookupKeyCountry = normalizeKey(normalizedCountry);
@@ -220,8 +215,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       return;
     }
   
-    const destination = destinationAirports[0];
-  
     // Compute flexible date range
     const eventDateObj = new Date(date);
     const startDate = new Date(eventDateObj);
@@ -233,30 +226,40 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     const departureDate = formatDate(startDate);
     const returnDate = formatDate(endDate);
   
-    console.log('Fetching flights with:', {
-      originAirport,
-      destination,
-      departureDate,
-      returnDate,
-    });
+    console.log('Fetching flights for all destination airports:', destinationAirports);
   
     setLoadingFlights(prev => ({ ...prev, [id]: true }));
     setErrorFlights(prev => ({ ...prev, [id]: null }));
   
     try {
-      const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
-      const res = await fetch(url);
+      let allFlights = [];
   
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Flights API returned ${res.status}: ${text}`);
+      // Sequential fetch per destination airport to avoid rate limits / API overload
+      for (const destination of destinationAirports) {
+        const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
+        console.log('Fetching flights from:', originAirport, 'to:', destination);
+        const res = await fetch(url);
+  
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Flights API returned ${res.status} for destination ${destination}: ${text}`);
+        }
+  
+        const json = await res.json();
+  
+        if (json.data?.length > 0) {
+          allFlights = allFlights.concat(json.data);
+        }
+  
+        // Optional: small delay between requests to avoid hammering API
+        await delay(100);
       }
   
-      const json = await res.json();
-  
+      // Optional: deduplicate flights if needed (by some unique id)
+      // For now, just setting all combined flights
       setFlightOffers(prev => ({
         ...prev,
-        [id]: json.data || []
+        [id]: allFlights
       }));
     } catch (error) {
       console.error(`Error fetching flights for event ${id}:`, error);
@@ -265,7 +268,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     } finally {
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
-  };
+  };  
   
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
