@@ -160,87 +160,100 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const fetchFlightsForEvent = async (event) => {
     const { state, date, country, id } = event;
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
-
+  
     console.log('Show flights clicked for event ID:', id);
     console.log('Show flights clicked for event:', event);
-
+  
     if (!date) {
       alert('Missing concert date to fetch flights.');
       return;
     }
-
+  
     if (!id) {
       console.warn('Event missing unique id:', event);
       alert('Cannot fetch flights: event ID missing.');
       return;
     }
-
+  
     console.log('State before normalization:', state);
     console.log('Country before normalization:', country);
-
-    let normalizedState = toTitleCase(state ? state.trim() : '');
-    if (state && state.length === 2) {
-      normalizedState = stateAbbrevToFull[state.toUpperCase()] || normalizedState;
+  
+    // Normalize and map state abbrev to full state name first
+    let normalizedState = '';
+    if (state) {
+      if (state.length === 2) {
+        normalizedState = stateAbbrevToFull[state.toUpperCase()] || state;
+      } else {
+        normalizedState = toTitleCase(state.trim());
+      }
     }
-    const normalizedCountry = toTitleCase(country ? country.trim() : '');
-
+  
+    const normalizedCountry = country ? toTitleCase(country.trim()) : '';
+  
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
-
+  
     console.log('Keys in normalizedStateToAirports:', Object.keys(normalizedStateToAirports));
-
+  
     const lookupKeyState = normalizeKey(normalizedState);
     const lookupKeyCountry = normalizeKey(normalizedCountry);
-
+  
     console.log('Lookup Key State:', lookupKeyState);
     console.log('Lookup Key Country:', lookupKeyCountry);
-
-    const destinationAirports =
-      (normalizedState && normalizedStateToAirports[lookupKeyState]) ||
-      (normalizedCountry && normalizedStateToAirports[lookupKeyCountry]);
-
-    console.log('Destination Airports:', destinationAirports);
-
+  
+    // Strictly check if keys exist in mapping before using them
+    let destinationAirports = [];
+    if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
+      destinationAirports = normalizedStateToAirports[lookupKeyState];
+      console.log('Using airports from state:', normalizedState, destinationAirports);
+    } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
+      destinationAirports = normalizedStateToAirports[lookupKeyCountry];
+      console.log('Using airports from country:', normalizedCountry, destinationAirports);
+    } else {
+      console.warn('No airports found for:', normalizedState || normalizedCountry);
+      alert(`No airport codes found for ${state || country}.`);
+      return;
+    }
+  
     if (!destinationAirports || destinationAirports.length === 0) {
       alert(`No airport codes found for ${state || country}.`);
       return;
     }
-
+  
     const destination = destinationAirports[0];
-
+  
     // Compute flexible date range
     const eventDateObj = new Date(date);
     const startDate = new Date(eventDateObj);
     startDate.setDate(startDate.getDate() - daysBefore);
     const endDate = new Date(eventDateObj);
     endDate.setDate(endDate.getDate() + daysAfter);
-
+  
     const formatDate = d => d.toISOString().split('T')[0];
     const departureDate = formatDate(startDate);
     const returnDate = formatDate(endDate);
-
+  
     console.log('Fetching flights with:', {
       originAirport,
       destination,
       departureDate,
       returnDate,
     });
-
+  
     setLoadingFlights(prev => ({ ...prev, [id]: true }));
     setErrorFlights(prev => ({ ...prev, [id]: null }));
-
+  
     try {
-      // Assuming your backend supports departureDate & returnDate as query params
       const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
       const res = await fetch(url);
-
+  
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Flights API returned ${res.status}: ${text}`);
       }
-
+  
       const json = await res.json();
-
+  
       setFlightOffers(prev => ({
         ...prev,
         [id]: json.data || []
@@ -253,7 +266,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
   };
-
+  
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
 
