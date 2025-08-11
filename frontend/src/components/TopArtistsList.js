@@ -55,6 +55,45 @@ const stateToAirports = {
   "Wyoming": ["JAC"], // Jackson Hole
 };
 
+const airlineNames = {
+  "6X": "Amadeus Six",
+  "PR": "Philippine Airlines",
+  "AA": "American Airlines",
+  "DL": "Delta Air Lines",
+  "UA": "United Airlines",
+  "WN": "Southwest Airlines",
+  "AS": "Alaska Airlines",
+  "B6": "JetBlue Airways",
+  "AF": "Air France",
+  "LH": "Lufthansa",
+  "EK": "Emirates",
+  "AC": "Air Canada",
+  "BA": "British Airways",
+  "CX": "Cathay Pacific",
+  "QF": "Qantas",
+  "SQ": "Singapore Airlines",
+  "JL": "Japan Airlines",
+  "NH": "All Nippon Airways",
+  "IB": "Iberia",
+  "AZ": "Alitalia",
+  "KL": "KLM Royal Dutch Airlines",
+  "TK": "Turkish Airlines",
+  "SA": "South African Airways",
+  "NZ": "Air New Zealand",
+  "EY": "Etihad Airways",
+  "QR": "Qatar Airways",
+  "MS": "EgyptAir",
+  "CX": "Cathay Pacific",
+  "FI": "Icelandair",
+  "DL": "Delta Air Lines",
+  "F9": "Frontier Airlines",
+  "G4": "Allegiant Air",
+  "HA": "Hawaiian Airlines",
+  "VX": "Virgin America",
+  "WN": "Southwest Airlines",
+  "YV": "Mesa Airlines",
+};
+
 console.log('Raw stateToAirports:', stateToAirports);
 console.log('Is empty?', Object.keys(stateToAirports).length === 0);
 
@@ -437,42 +476,49 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               {flightOffers[event.id]?.length > 0 && (
                                 <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
                                   {flightOffers[event.id].map((flight, idx) => {
-                                    const itinerary = flight.itineraries?.[0];
-                                    if (!itinerary) return null;
+                                      const itinerary = flight.itineraries?.[0];
+                                      if (!itinerary) return null;
 
-                                    const segments = itinerary.segments || [];
-                                    if (segments.length === 0) return null;
+                                      const segments = itinerary.segments || [];
+                                      if (segments.length === 0) return null;
 
-                                    const firstSegment = segments[0];
-                                    const lastSegment = segments[segments.length - 1];
+                                      const firstSegment = segments[0];
+                                      const lastSegment = segments[segments.length - 1];
 
-                                    const departureTime = new Date(firstSegment.departure.at);
-                                    const arrivalTime = new Date(lastSegment.arrival.at);
+                                      const departureTime = new Date(firstSegment.departure.at);
+                                      const arrivalTime = new Date(lastSegment.arrival.at);
 
-                                    const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
-                                    const hours = Math.floor(durationMinutes / 60);
-                                    const minutes = Math.round(durationMinutes % 60);
-                                    const durationStr = `${hours}h ${minutes}m`;
+                                      const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
+                                      const hours = Math.floor(durationMinutes / 60);
+                                      const minutes = Math.round(durationMinutes % 60);
+                                      const durationStr = `${hours}h ${minutes}m`;
 
-                                    // Aggregate unique airline carrier codes from all segments
-                                    const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))].join(', ');
+                                      // Get unique carrier codes from segments
+                                      const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
 
-                                    // Optional booking URL if your API supports it
-                                    const bookingUrl = flight.bookingLink || null;
+                                      // Map codes to full names (fall back to code if no name found)
+                                      const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
 
-                                    return (
-                                      <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                        <strong>Airline(s):</strong> {airlineCodes} |&nbsp;
-                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                        <strong>Depart:</strong> {departureTime.toLocaleString()} ({firstSegment.departure.iataCode}) |&nbsp;
-                                        <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({lastSegment.arrival.iataCode}) |&nbsp;
-                                        <strong>Duration:</strong> {durationStr}
-                                        {bookingUrl && (
-                                          <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
-                                        )}
-                                      </li>
-                                    );
-                                  })}
+                                      // Combine into display string: "American Airlines (AA), Delta Air Lines (DL)"
+                                      const airlinesDisplay = airlineNamesList
+                                        .map((name, i) => `${name} (${airlineCodes[i]})`)
+                                        .join(', ');
+
+                                      const bookingUrl = flight.bookingLink || null;
+
+                                      return (
+                                        <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                                          <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
+                                          <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                          <strong>Depart:</strong> {departureTime.toLocaleString()} ({firstSegment.departure.iataCode}) |&nbsp;
+                                          <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                          <strong>Duration:</strong> {durationStr}
+                                          {bookingUrl && (
+                                            <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
                                 </ul>
                               )}
                           </li>
