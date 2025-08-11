@@ -431,31 +431,47 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
                             )}
 
-                            {flightOffers[event.id]?.length > 0 && (
-                              <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
-                                {flightOffers[event.id].map((flight, idx) => {
-                                  const depSeg = flight.itineraries?.[0]?.segments?.[0];
-                                  if (!depSeg) return null;
+                              {flightOffers[event.id]?.length > 0 && (
+                                <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
+                                  {flightOffers[event.id].map((flight, idx) => {
+                                    const itinerary = flight.itineraries?.[0];
+                                    if (!itinerary) return null;
 
-                                  const departureTime = new Date(depSeg.departure.at);
-                                  const arrivalTime = new Date(depSeg.arrival.at);
-                                  const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
-                                  const hours = Math.floor(durationMinutes / 60);
-                                  const minutes = Math.round(durationMinutes % 60);
-                                  const durationStr = `${hours}h ${minutes}m`;
+                                    const segments = itinerary.segments || [];
+                                    if (segments.length === 0) return null;
 
-                                  return (
-                                    <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                      <strong>Airline:</strong> {depSeg.carrierCode} |&nbsp;
-                                      <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                      <strong>Depart:</strong> {departureTime.toLocaleString()} ({depSeg.departure.iataCode}) |&nbsp;
-                                      <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({depSeg.arrival.iataCode}) |&nbsp;
-                                      <strong>Duration:</strong> {durationStr}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            )}
+                                    const firstSegment = segments[0];
+                                    const lastSegment = segments[segments.length - 1];
+
+                                    const departureTime = new Date(firstSegment.departure.at);
+                                    const arrivalTime = new Date(lastSegment.arrival.at);
+
+                                    const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
+                                    const hours = Math.floor(durationMinutes / 60);
+                                    const minutes = Math.round(durationMinutes % 60);
+                                    const durationStr = `${hours}h ${minutes}m`;
+
+                                    // Aggregate unique airline carrier codes from all segments
+                                    const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))].join(', ');
+
+                                    // Optional booking URL if your API supports it
+                                    const bookingUrl = flight.bookingLink || null;
+
+                                    return (
+                                      <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                                        <strong>Airline(s):</strong> {airlineCodes} |&nbsp;
+                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                        <strong>Depart:</strong> {departureTime.toLocaleString()} ({firstSegment.departure.iataCode}) |&nbsp;
+                                        <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                        <strong>Duration:</strong> {durationStr}
+                                        {bookingUrl && (
+                                          <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
+                                        )}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              )}
                           </li>
                         ))}
                       </ul>
