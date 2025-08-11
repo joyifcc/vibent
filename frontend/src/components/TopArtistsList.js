@@ -94,6 +94,66 @@ const airlineNames = {
   "YV": "Mesa Airlines",
 };
 
+// US states with single timezone (most of them)
+const stateToTimezone = {
+  "Alabama": "America/Chicago",
+  "Alaska": "America/Anchorage",
+  "Arizona": "America/Phoenix",
+  "Arkansas": "America/Chicago",
+  "California": "America/Los_Angeles",
+  "Colorado": "America/Denver",
+  "Connecticut": "America/New_York",
+  "Delaware": "America/New_York",
+  "District of Columbia": "America/New_York",
+  "Florida": "America/New_York", // see note below
+  "Georgia": "America/New_York",
+  "Hawaii": "Pacific/Honolulu",
+  "Idaho": "America/Boise", // mostly Mountain Time
+  "Illinois": "America/Chicago",
+  "Indiana": "America/Indiana/Indianapolis", // mostly Eastern
+  "Iowa": "America/Chicago",
+  "Kansas": "America/Chicago", // some parts Mountain Time, but mostly Chicago
+  "Kentucky": "America/New_York", // mostly Eastern
+  "Louisiana": "America/Chicago",
+  "Maine": "America/New_York",
+  "Maryland": "America/New_York",
+  "Massachusetts": "America/New_York",
+  "Michigan": "America/Detroit", // Eastern time
+  "Minnesota": "America/Chicago",
+  "Mississippi": "America/Chicago",
+  "Missouri": "America/Chicago",
+  "Montana": "America/Denver",
+  "Nebraska": "America/Chicago", // parts in Mountain Time, but mostly Chicago
+  "Nevada": "America/Los_Angeles", // parts in Mountain Time
+  "New Hampshire": "America/New_York",
+  "New Jersey": "America/New_York",
+  "New Mexico": "America/Denver",
+  "New York": "America/New_York",
+  "North Carolina": "America/New_York",
+  "North Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
+  "Ohio": "America/New_York",
+  "Oklahoma": "America/Chicago",
+  "Oregon": "America/Los_Angeles", // some parts in Mountain Time
+  "Pennsylvania": "America/New_York",
+  "Rhode Island": "America/New_York",
+  "South Carolina": "America/New_York",
+  "South Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
+  "Tennessee": "America/Chicago", // mostly Central Time (East Tennessee is Eastern)
+  "Texas": "America/Chicago", // mostly Central, but West Texas is Mountain Time
+  "Utah": "America/Denver",
+  "Vermont": "America/New_York",
+  "Virginia": "America/New_York",
+  "Washington": "America/Los_Angeles",
+  "West Virginia": "America/New_York",
+  "Wisconsin": "America/Chicago",
+  "Wyoming": "America/Denver"
+};
+
+// Note: States like Florida, Tennessee, Texas, South Dakota, Oregon, North Dakota, Kansas, Nebraska have multiple time zones.
+// You could refine this by checking city/airport location or simply default to main time zone.
+
+
+
 console.log('Raw stateToAirports:', stateToAirports);
 console.log('Is empty?', Object.keys(stateToAirports).length === 0);
 
@@ -104,6 +164,22 @@ const normalizedStateToAirports = Object.fromEntries(
 );
 
 console.log('Normalized keys:', Object.keys(normalizedStateToAirports));
+
+function formatWithTimezone(date, state) {
+  const timeZone = stateToTimezone[state] || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short',
+  }).format(date);
+}
+
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
   const [concertData, setConcertData] = useState({});
@@ -510,14 +586,16 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                         <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
                                           <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
                                           <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                          <strong>Depart:</strong> {departureTime.toLocaleString()} ({firstSegment.departure.iataCode}) |&nbsp;
-                                          <strong>Arrive:</strong> {arrivalTime.toLocaleString()} ({lastSegment.arrival.iataCode}) |&nbsp;
-                                          <strong>Duration:</strong> {durationStr}
+                                          <strong>Depart:</strong> {formatWithTimezone(departureTime, event.state)} ({firstSegment.departure.iataCode}) |&nbsp;
+                                          <strong>Arrive:</strong> {formatWithTimezone(arrivalTime, event.state)} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                          <strong>Duration:</strong> {durationStr} |&nbsp;
+                                          <strong>Stops:</strong> {segments.length - 1}
                                           {bookingUrl && (
                                             <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
                                           )}
                                         </li>
                                       );
+                                      
                                     })}
                                 </ul>
                               )}
