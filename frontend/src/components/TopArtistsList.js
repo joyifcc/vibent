@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
+import { DateTime } from "luxon";
+
 
 const stateToAirports = {
   "Alabama": ["BHM", "HSV", "MGM", "MOB"], // Birmingham, Huntsville, Montgomery, Mobile
@@ -94,63 +96,67 @@ const airlineNames = {
   "YV": "Mesa Airlines",
 };
 
-// US states with single timezone (most of them)
-const stateToTimezone = {
-  "Alabama": "America/Chicago",
-  "Alaska": "America/Anchorage",
-  "Arizona": "America/Phoenix",
-  "Arkansas": "America/Chicago",
-  "California": "America/Los_Angeles",
-  "Colorado": "America/Denver",
-  "Connecticut": "America/New_York",
-  "Delaware": "America/New_York",
-  "District of Columbia": "America/New_York",
-  "Florida": "America/New_York", // see note below
-  "Georgia": "America/New_York",
-  "Hawaii": "Pacific/Honolulu",
-  "Idaho": "America/Boise", // mostly Mountain Time
-  "Illinois": "America/Chicago",
-  "Indiana": "America/Indiana/Indianapolis", // mostly Eastern
-  "Iowa": "America/Chicago",
-  "Kansas": "America/Chicago", // some parts Mountain Time, but mostly Chicago
-  "Kentucky": "America/New_York", // mostly Eastern
-  "Louisiana": "America/Chicago",
-  "Maine": "America/New_York",
-  "Maryland": "America/New_York",
-  "Massachusetts": "America/New_York",
-  "Michigan": "America/Detroit", // Eastern time
-  "Minnesota": "America/Chicago",
-  "Mississippi": "America/Chicago",
-  "Missouri": "America/Chicago",
-  "Montana": "America/Denver",
-  "Nebraska": "America/Chicago", // parts in Mountain Time, but mostly Chicago
-  "Nevada": "America/Los_Angeles", // parts in Mountain Time
-  "New Hampshire": "America/New_York",
-  "New Jersey": "America/New_York",
-  "New Mexico": "America/Denver",
-  "New York": "America/New_York",
-  "North Carolina": "America/New_York",
-  "North Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
-  "Ohio": "America/New_York",
-  "Oklahoma": "America/Chicago",
-  "Oregon": "America/Los_Angeles", // some parts in Mountain Time
-  "Pennsylvania": "America/New_York",
-  "Rhode Island": "America/New_York",
-  "South Carolina": "America/New_York",
-  "South Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
-  "Tennessee": "America/Chicago", // mostly Central Time (East Tennessee is Eastern)
-  "Texas": "America/Chicago", // mostly Central, but West Texas is Mountain Time
-  "Utah": "America/Denver",
-  "Vermont": "America/New_York",
-  "Virginia": "America/New_York",
-  "Washington": "America/Los_Angeles",
-  "West Virginia": "America/New_York",
-  "Wisconsin": "America/Chicago",
-  "Wyoming": "America/Denver"
+const formatWithTimezone = (dateTimeStr, state) => {
+  const stateTimezones = {
+    "Alabama": "America/Chicago",
+    "Alaska": "America/Anchorage",
+    "Arizona": "America/Phoenix",
+    "Arkansas": "America/Chicago",
+    "California": "America/Los_Angeles",
+    "Colorado": "America/Denver",
+    "Connecticut": "America/New_York",
+    "Delaware": "America/New_York",
+    "District of Columbia": "America/New_York",
+    "Florida": "America/New_York", // see note below
+    "Georgia": "America/New_York",
+    "Hawaii": "Pacific/Honolulu",
+    "Idaho": "America/Boise", // mostly Mountain Time
+    "Illinois": "America/Chicago",
+    "Indiana": "America/Indiana/Indianapolis", // mostly Eastern
+    "Iowa": "America/Chicago",
+    "Kansas": "America/Chicago", // some parts Mountain Time, but mostly Chicago
+    "Kentucky": "America/New_York", // mostly Eastern
+    "Louisiana": "America/Chicago",
+    "Maine": "America/New_York",
+    "Maryland": "America/New_York",
+    "Massachusetts": "America/New_York",
+    "Michigan": "America/Detroit", // Eastern time
+    "Minnesota": "America/Chicago",
+    "Mississippi": "America/Chicago",
+    "Missouri": "America/Chicago",
+    "Montana": "America/Denver",
+    "Nebraska": "America/Chicago", // parts in Mountain Time, but mostly Chicago
+    "Nevada": "America/Los_Angeles", // parts in Mountain Time
+    "New Hampshire": "America/New_York",
+    "New Jersey": "America/New_York",
+    "New Mexico": "America/Denver",
+    "New York": "America/New_York",
+    "North Carolina": "America/New_York",
+    "North Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
+    "Ohio": "America/New_York",
+    "Oklahoma": "America/Chicago",
+    "Oregon": "America/Los_Angeles", // some parts in Mountain Time
+    "Pennsylvania": "America/New_York",
+    "Rhode Island": "America/New_York",
+    "South Carolina": "America/New_York",
+    "South Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
+    "Tennessee": "America/Chicago", // mostly Central Time (East Tennessee is Eastern)
+    "Texas": "America/Chicago", // mostly Central, but West Texas is Mountain Time
+    "Utah": "America/Denver",
+    "Vermont": "America/New_York",
+    "Virginia": "America/New_York",
+    "Washington": "America/Los_Angeles",
+    "West Virginia": "America/New_York",
+    "Wisconsin": "America/Chicago",
+    "Wyoming": "America/Denver"
+  };
+
+  const timezone = stateTimezones[state] || "UTC";
+  return DateTime.fromISO(dateTimeStr, { zone: "utc" })
+    .setZone(timezone)
+    .toFormat("MMM dd, yyyy hh:mm a ZZZZ");
 };
 
-// Note: States like Florida, Tennessee, Texas, South Dakota, Oregon, North Dakota, Kansas, Nebraska have multiple time zones.
-// You could refine this by checking city/airport location or simply default to main time zone.
 
 
 
@@ -165,20 +171,6 @@ const normalizedStateToAirports = Object.fromEntries(
 
 console.log('Normalized keys:', Object.keys(normalizedStateToAirports));
 
-function formatWithTimezone(date, state) {
-  const timeZone = stateToTimezone[state] || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZoneName: 'short',
-  }).format(date);
-}
 
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
@@ -232,6 +224,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington",
     WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming"
   };
+
+
 
   useEffect(() => {
     const fetchConcerts = async () => {
@@ -552,51 +546,51 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               {flightOffers[event.id]?.length > 0 && (
                                 <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
                                   {flightOffers[event.id].map((flight, idx) => {
-                                      const itinerary = flight.itineraries?.[0];
-                                      if (!itinerary) return null;
+                                    const itinerary = flight.itineraries?.[0];
+                                    if (!itinerary) return null;
 
-                                      const segments = itinerary.segments || [];
-                                      if (segments.length === 0) return null;
+                                    const segments = itinerary.segments || [];
+                                    if (segments.length === 0) return null;
 
-                                      const firstSegment = segments[0];
-                                      const lastSegment = segments[segments.length - 1];
+                                    const firstSegment = segments[0];
+                                    const lastSegment = segments[segments.length - 1];
 
-                                      const departureTime = new Date(firstSegment.departure.at);
-                                      const arrivalTime = new Date(lastSegment.arrival.at);
+                                    const departureTime = firstSegment.departure.at; // ISO string
+                                    const arrivalTime = lastSegment.arrival.at;     // ISO string
 
-                                      const durationMinutes = (arrivalTime - departureTime) / (1000 * 60);
-                                      const hours = Math.floor(durationMinutes / 60);
-                                      const minutes = Math.round(durationMinutes % 60);
-                                      const durationStr = `${hours}h ${minutes}m`;
+                                    const durationMinutes =
+                                      (new Date(arrivalTime) - new Date(departureTime)) / (1000 * 60);
+                                    const hours = Math.floor(durationMinutes / 60);
+                                    const minutes = Math.round(durationMinutes % 60);
+                                    const durationStr = `${hours}h ${minutes}m`;
 
-                                      // Get unique carrier codes from segments
-                                      const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
+                                    // Get unique carrier codes from segments
+                                    const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
 
-                                      // Map codes to full names (fall back to code if no name found)
-                                      const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
+                                    // Map codes to full names (fall back to code if no name found)
+                                    const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
 
-                                      // Combine into display string: "American Airlines (AA), Delta Air Lines (DL)"
-                                      const airlinesDisplay = airlineNamesList
-                                        .map((name, i) => `${name} (${airlineCodes[i]})`)
-                                        .join(', ');
+                                    // Combine into display string: "American Airlines (AA), Delta Air Lines (DL)"
+                                    const airlinesDisplay = airlineNamesList
+                                      .map((name, i) => `${name} (${airlineCodes[i]})`)
+                                      .join(', ');
 
-                                      const bookingUrl = flight.bookingLink || null;
+                                    const bookingUrl = flight.bookingLink || null;
 
-                                      return (
-                                        <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                          <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                          <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                          <strong>Depart:</strong> {formatWithTimezone(departureTime, event.state)} ({firstSegment.departure.iataCode}) |&nbsp;
-                                          <strong>Arrive:</strong> {formatWithTimezone(arrivalTime, event.state)} ({lastSegment.arrival.iataCode}) |&nbsp;
-                                          <strong>Duration:</strong> {durationStr} |&nbsp;
-                                          <strong>Stops:</strong> {segments.length - 1}
-                                          {bookingUrl && (
-                                            <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
-                                          )}
-                                        </li>
-                                      );
-                                      
-                                    })}
+                                    return (
+                                      <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                                        <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
+                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                        <strong>Depart:</strong> {formatWithTimezone(departureTime, event.state)} ({firstSegment.departure.iataCode}) |&nbsp;
+                                        <strong>Arrive:</strong> {formatWithTimezone(arrivalTime, event.state)} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                        <strong>Duration:</strong> {durationStr} |&nbsp;
+                                        <strong>Stops:</strong> {segments.length - 1}
+                                        {bookingUrl && (
+                                          <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
+                                        )}
+                                      </li>
+                                    );
+                                  })}
                                 </ul>
                               )}
                           </li>
