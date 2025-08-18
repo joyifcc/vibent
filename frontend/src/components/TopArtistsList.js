@@ -555,22 +555,19 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    const departureTime = firstSegment.departure.at; // ISO string
-                                    const arrivalTime = lastSegment.arrival.at;     // ISO string
+                                    // Parse departure and arrival times in UTC
+                                    const departureUTC = DateTime.fromISO(firstSegment.departure.at, { zone: 'utc' });
+                                    const arrivalUTC = DateTime.fromISO(lastSegment.arrival.at, { zone: 'utc' });
 
-                                    const durationMinutes =
-                                      (new Date(arrivalTime) - new Date(departureTime)) / (1000 * 60);
+                                    // Compute duration
+                                    const durationMinutes = arrivalUTC.diff(departureUTC, 'minutes').minutes;
                                     const hours = Math.floor(durationMinutes / 60);
                                     const minutes = Math.round(durationMinutes % 60);
                                     const durationStr = `${hours}h ${minutes}m`;
 
-                                    // Get unique carrier codes from segments
+                                    // Deduplicate and map airline codes to full names
                                     const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
-
-                                    // Map codes to full names (fall back to code if no name found)
                                     const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
-
-                                    // Combine into display string: "American Airlines (AA), Delta Air Lines (DL)"
                                     const airlinesDisplay = airlineNamesList
                                       .map((name, i) => `${name} (${airlineCodes[i]})`)
                                       .join(', ');
@@ -581,8 +578,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
                                         <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
                                         <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                        <strong>Depart:</strong> {formatWithTimezone(departureTime, event.state)} ({firstSegment.departure.iataCode}) |&nbsp;
-                                        <strong>Arrive:</strong> {formatWithTimezone(arrivalTime, event.state)} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                        <strong>Depart:</strong> {formatWithTimezone(firstSegment.departure.at, event.state)} ({firstSegment.departure.iataCode}) |&nbsp;
+                                        <strong>Arrive:</strong> {formatWithTimezone(lastSegment.arrival.at, event.state)} ({lastSegment.arrival.iataCode}) |&nbsp;
                                         <strong>Duration:</strong> {durationStr} |&nbsp;
                                         <strong>Stops:</strong> {segments.length - 1}
                                         {bookingUrl && (
