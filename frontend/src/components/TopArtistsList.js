@@ -555,16 +555,16 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    const departureISO = firstSegment.departure.at;
-                                    const arrivalISO = lastSegment.arrival.at;
-                                    
-                                    const departure = DateTime.fromISO(departureISO); // uses API offset
-                                    const arrival = DateTime.fromISO(arrivalISO);     // uses API offset
-                                    
-                                    const durationMinutes = arrival.diff(departure, 'minutes').minutes;
+                                    const departureUTC = DateTime.fromISO(firstSegment.departure.at);
+                                    const arrivalUTC = DateTime.fromISO(lastSegment.arrival.at);
+                                    const durationMinutes = arrivalUTC.diff(departureUTC, 'minutes').minutes;
                                     const hours = Math.floor(durationMinutes / 60);
                                     const minutes = Math.round(durationMinutes % 60);
                                     const durationStr = `${hours}h ${minutes}m`;
+
+                                    const departureLocal = formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode);
+                                    const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode);
+                                    const arrivalISO = arrivalUTC.toISO();  
 
 
                                     // Airline names display
@@ -578,16 +578,17 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
                                     return (
                                       <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                        <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                        <strong>Depart:</strong> {formatWithTimezone(departureISO, firstSegment.departure.iataCode)} |&nbsp;
-                                        <strong>Arrive:</strong> {formatWithTimezone(arrivalISO, lastSegment.arrival.iataCode)} |&nbsp;
-                                        <strong>Duration:</strong> {durationStr} |&nbsp;
-                                        <strong>Stops:</strong> {segments.length - 1}
-                                        {bookingUrl && (
-                                          <> | <a href={bookingUrl} target="_blank" rel="noopener noreferrer">Book flight</a></>
-                                        )}
-                                      </li>
+                                      <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
+                                      <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+
+                                      {/* Format departure and arrival in local time */}
+                                      <strong>Depart:</strong> {formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode)} ({firstSegment.departure.iataCode}) |&nbsp;
+                                      <strong>Arrive:</strong> {formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode)} ({lastSegment.arrival.iataCode}) |&nbsp;
+
+                                      {/* Actual flight duration based on UTC */}
+                                      <strong>Duration:</strong> {durationStr} |&nbsp;
+                                      <strong>Stops:</strong> {segments.length - 1}
+                                    </li>
                                     );
                                   })}
                                 </ul>
