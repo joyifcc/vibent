@@ -152,7 +152,7 @@ const formatWithTimezone = (dateTimeStr, state) => {
   };
 
   const timezone = stateTimezones[state] || "UTC";
-  return DateTime.fromISO(dateTimeStr, { zone: "utc" })
+  return DateTime.fromISO(dateTimeStr) 
     .setZone(timezone)
     .toFormat("MMM dd, yyyy hh:mm a ZZZZ");
 };
@@ -555,17 +555,17 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    // Parse departure and arrival times in UTC
+                                    // Parse departure and arrival in UTC (ignores local shifts)
                                     const departureUTC = DateTime.fromISO(firstSegment.departure.at, { zone: 'utc' });
                                     const arrivalUTC = DateTime.fromISO(lastSegment.arrival.at, { zone: 'utc' });
 
-                                    // Compute duration
+                                    // Duration calculation in minutes
                                     const durationMinutes = arrivalUTC.diff(departureUTC, 'minutes').minutes;
                                     const hours = Math.floor(durationMinutes / 60);
                                     const minutes = Math.round(durationMinutes % 60);
                                     const durationStr = `${hours}h ${minutes}m`;
 
-                                    // Deduplicate and map airline codes to full names
+                                    // Airline names display
                                     const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
                                     const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
                                     const airlinesDisplay = airlineNamesList
