@@ -288,6 +288,8 @@ app.get('/flights', async (req, res) => {
     return res.status(400).json({ error: 'origin, destination, and departureDate query parameters are required' });
   }
 
+  console.log('Fetching flights with:', { origin, destination, departureDate });
+
   try {
     await ensureAmadeusAccessToken();
 
@@ -298,21 +300,12 @@ app.get('/flights', async (req, res) => {
           id: '1',
           originLocationCode: origin,
           destinationLocationCode: destination,
-          departureDateTimeRange: {
-            date: departureDate
-          }
+          departureDateTimeRange: { date: departureDate }
         }
       ],
-      travelers: [
-        {
-          id: '1',
-          travelerType: 'ADULT'
-        }
-      ],
+      travelers: [{ id: '1', travelerType: 'ADULT' }],
       sources: ['GDS'],
-      searchCriteria: {
-        maxFlightOffers: 5
-      }
+      searchCriteria: { maxFlightOffers: 5 }
     };
 
     const flightsRes = await axios.post(
@@ -326,12 +319,22 @@ app.get('/flights', async (req, res) => {
       }
     );
 
+    console.log('Flights fetched:', flightsRes.data.meta?.count || flightsRes.data?.data?.length || 'unknown');
     res.json(flightsRes.data);
   } catch (error) {
-    console.error('Error fetching flights:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Error fetching flights' });
+    console.error('Error fetching flights:', {
+      message: error.message,
+      responseData: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
+    res.status(500).json({ 
+      error: 'Error fetching flights', 
+      details: error.response?.data || error.message 
+    });
   }
 });
+
 
 
 app.listen(PORT, () => {

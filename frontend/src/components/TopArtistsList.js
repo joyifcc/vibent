@@ -555,18 +555,22 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    const departureTime = new Date(firstSegment.departure.at);
-                                    const arrivalTime = new Date(lastSegment.arrival.at);
-                                    
-                                    const durationMs = arrivalTime - departureTime;
-                                    const durationHours = Math.floor(durationMs / 1000 / 60 / 60);
-                                    const durationMinutes = Math.round((durationMs / 1000 / 60) % 60);
+                                    // Calculate total flight duration ignoring time zones
+                                    const totalDurationMinutes = segments.reduce((sum, seg) => {
+                                      const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+                                      if (!match) return sum;
+                                      const hours = parseInt(match[1] || 0);
+                                      const minutes = parseInt(match[2] || 0);
+                                      return sum + hours * 60 + minutes;
+                                    }, 0);
+
+                                    const durationHours = Math.floor(totalDurationMinutes / 60);
+                                    const durationMinutes = totalDurationMinutes % 60;
                                     const durationStr = `${durationHours}h ${durationMinutes}m`;
 
+                                    // Format departure/arrival in local time
                                     const departureLocal = formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode);
                                     const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode);
-                                
-
 
                                     // Airline names display
                                     const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
@@ -575,21 +579,15 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       .map((name, i) => `${name} (${airlineCodes[i]})`)
                                       .join(', ');
 
-
-
                                     return (
                                       <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                      <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                      <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-
-                                      {/* Format departure and arrival in local time */}
-                                      <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
-                                      <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
-
-                                      {/* Actual flight duration based on UTC */}
-                                      <strong>Duration:</strong> {durationStr} |&nbsp;
-                                      <strong>Stops:</strong> {segments.length - 1}
-                                    </li>
+                                        <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
+                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                        <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
+                                        <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                        <strong>Duration:</strong> {durationStr} |&nbsp;
+                                        <strong>Stops:</strong> {segments.length - 1}
+                                      </li>
                                     );
                                   })}
                                 </ul>
