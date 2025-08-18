@@ -160,6 +160,14 @@ const airportToState = {};
             airports.forEach(code => { airportToState[code] = state; });
           });
 
+          export const fetchFlights = async (origin, destination, departureDate) => {
+            const res = await fetch(
+              `/api/flights?origin=${origin}&destination=${destination}&departureDate=${departureDate}`
+            );
+            if (!res.ok) throw new Error(`Flights API returned ${res.status}`);
+            return res.json();
+          };
+          
 
 
 export {
