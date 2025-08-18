@@ -555,16 +555,17 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    const departureUTC = DateTime.fromISO(firstSegment.departure.at);
-                                    const arrivalUTC = DateTime.fromISO(lastSegment.arrival.at);
-                                    const durationMinutes = arrivalUTC.diff(departureUTC, 'minutes').minutes;
-                                    const hours = Math.floor(durationMinutes / 60);
-                                    const minutes = Math.round(durationMinutes % 60);
-                                    const durationStr = `${hours}h ${minutes}m`;
+                                    const departureTime = new Date(firstSegment.departure.at);
+                                    const arrivalTime = new Date(lastSegment.arrival.at);
+                                    
+                                    const durationMs = arrivalTime - departureTime;
+                                    const durationHours = Math.floor(durationMs / 1000 / 60 / 60);
+                                    const durationMinutes = Math.round((durationMs / 1000 / 60) % 60);
+                                    const durationStr = `${durationHours}h ${durationMinutes}m`;
 
                                     const departureLocal = formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode);
                                     const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode);
-                                    const arrivalISO = arrivalUTC.toISO();  
+                                
 
 
                                     // Airline names display
@@ -574,7 +575,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       .map((name, i) => `${name} (${airlineCodes[i]})`)
                                       .join(', ');
 
-                                    const bookingUrl = flight.bookingLink || null;
+
 
                                     return (
                                       <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
@@ -582,8 +583,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       <strong>Price:</strong> ${flight.price?.total} |&nbsp;
 
                                       {/* Format departure and arrival in local time */}
-                                      <strong>Depart:</strong> {formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode)} ({firstSegment.departure.iataCode}) |&nbsp;
-                                      <strong>Arrive:</strong> {formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode)} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                      <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
+                                      <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
 
                                       {/* Actual flight duration based on UTC */}
                                       <strong>Duration:</strong> {durationStr} |&nbsp;
