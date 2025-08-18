@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './TopArtistsList.css';
 import { DateTime } from "luxon";
+import { useNavigate } from 'react-router-dom';
+
 
 
 const stateToAirports = {
@@ -174,6 +176,7 @@ console.log('Normalized keys:', Object.keys(normalizedStateToAirports));
 
 
 const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) => {
+  const navigate = useNavigate();
   const [concertData, setConcertData] = useState({});
   const [expandedArtists, setExpandedArtists] = useState({});
   const [loading, setLoading] = useState(false);
@@ -552,57 +555,90 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
                             )}
 
-              
-
                               {flightOffers[event.id]?.length > 0 && (
                                 <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
-                                  {flightOffers[event.id].map((flight, idx) => {
-                                    const itinerary = flight.itineraries?.[0];
-                                    if (!itinerary) return null;
+                                  {flightOffers[event.id]
+                                    .slice(0, 2) // Show only first 2 flights as preview
+                                    .map((flight, idx) => {
+                                      const itinerary = flight.itineraries?.[0];
+                                      if (!itinerary) return null;
 
-                                    const segments = itinerary.segments || [];
-                                    if (segments.length === 0) return null;
+                                      const segments = itinerary.segments || [];
+                                      if (segments.length === 0) return null;
 
-                                    const firstSegment = segments[0];
-                                    const lastSegment = segments[segments.length - 1];
+                                      const firstSegment = segments[0];
+                                      const lastSegment = segments[segments.length - 1];
 
-                                    // Flight duration in minutes (sum of segment durations)
-                                    const totalDurationMinutes = segments.reduce((sum, seg) => {
-                                      const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-                                      if (!match) return sum;
-                                      const hours = parseInt(match[1] || 0);
-                                      const minutes = parseInt(match[2] || 0);
-                                      return sum + hours * 60 + minutes;
-                                    }, 0);
+                                      // Flight duration
+                                      const totalDurationMinutes = segments.reduce((sum, seg) => {
+                                        const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+                                        if (!match) return sum;
+                                        const hours = parseInt(match[1] || 0);
+                                        const minutes = parseInt(match[2] || 0);
+                                        return sum + hours * 60 + minutes;
+                                      }, 0);
 
-                                    const durationHours = Math.floor(totalDurationMinutes / 60);
-                                    const durationMinutes = totalDurationMinutes % 60;
-                                    const durationStr = `${durationHours}h ${durationMinutes}m`;
+                                      const durationHours = Math.floor(totalDurationMinutes / 60);
+                                      const durationMinutes = totalDurationMinutes % 60;
+                                      const durationStr = `${durationHours}h ${durationMinutes}m`;
 
-                                    // Convert departure/arrival to **local airport timezone**
-                                    const departureState = airportToState[firstSegment.departure.iataCode] || 'UTC';
-                                    const arrivalState = airportToState[lastSegment.arrival.iataCode] || 'UTC';
-                                    const departureLocal = formatWithTimezone(firstSegment.departure.at, departureState);
-                                    const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, arrivalState);
+                                      // Convert to local timezones
+                                      const departureState = airportToState[firstSegment.departure.iataCode] || 'UTC';
+                                      const arrivalState = airportToState[lastSegment.arrival.iataCode] || 'UTC';
+                                      const departureLocal = formatWithTimezone(firstSegment.departure.at, departureState);
+                                      const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, arrivalState);
 
-                                    // Airline names display
-                                    const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
-                                    const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
-                                    const airlinesDisplay = airlineNamesList
-                                      .map((name, i) => `${name} (${airlineCodes[i]})`)
-                                      .join(', ');
+                                      // Airline display
+                                      const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
+                                      const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
+                                      const airlinesDisplay = airlineNamesList
+                                        .map((name, i) => `${name} (${airlineCodes[i]})`)
+                                        .join(', ');
 
-                                    return (
-                                      <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                        <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                        <strong>Price:</strong> ${flight.price?.total} |&nbsp;
-                                        <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
-                                        <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
-                                        <strong>Duration:</strong> {durationStr} |&nbsp;
-                                        <strong>Stops:</strong> {segments.length - 1}
+                                        
+
+                                      return (
+                                        <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
+                                          <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
+                                          <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                          <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
+                                          <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
+                                          <strong>Duration:</strong> {durationStr} |&nbsp;
+                                          <strong>Stops:</strong> {segments.length - 1}
+                                        </li>
+                                      );
+                                    })}
+
+                                  {/* View All Flights Button */}
+     
+                                  {flightOffers[event.id].length > 2 && (
+
+                                      <li style={{ marginTop: '5px' }}>
+                                        <button
+                                          onClick={() => {
+                                            // Use navigate instead of window.location.href
+                                            navigate(`/flights/${event.id}`, {
+                                              state: {
+                                                event,
+                                                originAirport,
+                                                airportToState,
+                                              }
+                                            });
+                                          }}
+                                          style={{
+                                            backgroundColor: '#0070f3',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '6px 12px',
+                                            borderRadius: '5px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.9rem'
+                                          }}
+                                        >
+                                          View All Flights ({flightOffers[event.id].length})
+                                        </button>
                                       </li>
-                                    );
-                                  })}
+                                    )}
                                 </ul>
                               )}
                           </li>
