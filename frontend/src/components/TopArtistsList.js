@@ -295,6 +295,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   
     const normalizedCountry = country ? toTitleCase(country.trim()) : '';
+
+   
   
     console.log('Normalized State:', normalizedState);
     console.log('Normalized Country:', normalizedCountry);
@@ -334,6 +336,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     const formatDate = d => d.toISOString().split('T')[0];
     const departureDate = formatDate(startDate);
     const returnDate = formatDate(endDate);
+
+   
   
     console.log('Fetching flights for all destination airports:', destinationAirports);
   
@@ -470,6 +474,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
             );
           });
 
+          const airportToState = {};
+          Object.entries(stateToAirports).forEach(([state, airports]) => {
+            airports.forEach(code => { airportToState[code] = state; });
+          });
+
           return (
             <li key={index} className="artist-card">
               <img
@@ -543,6 +552,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
                             )}
 
+              
+
                               {flightOffers[event.id]?.length > 0 && (
                                 <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
                                   {flightOffers[event.id].map((flight, idx) => {
@@ -555,7 +566,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    // Calculate total flight duration ignoring time zones
+                                    // Flight duration in minutes (sum of segment durations)
                                     const totalDurationMinutes = segments.reduce((sum, seg) => {
                                       const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
                                       if (!match) return sum;
@@ -568,9 +579,11 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const durationMinutes = totalDurationMinutes % 60;
                                     const durationStr = `${durationHours}h ${durationMinutes}m`;
 
-                                    // Format departure/arrival in local time
-                                    const departureLocal = formatWithTimezone(firstSegment.departure.at, firstSegment.departure.iataCode);
-                                    const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, lastSegment.arrival.iataCode);
+                                    // Convert departure/arrival to **local airport timezone**
+                                    const departureState = airportToState[firstSegment.departure.iataCode] || 'UTC';
+                                    const arrivalState = airportToState[lastSegment.arrival.iataCode] || 'UTC';
+                                    const departureLocal = formatWithTimezone(firstSegment.departure.at, departureState);
+                                    const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, arrivalState);
 
                                     // Airline names display
                                     const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
