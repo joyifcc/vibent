@@ -609,53 +609,48 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       );
                                     })}
 
-                                  {/* View All Flights Button */}
-     
+                                    {/* View All Flights Button */}
                                   {flightOffers[event.id].length > 2 && (
-
-                                      <li style={{ marginTop: '5px' }}>
-                                        <button
-                                          onClick={() => {
-                                            // Use navigate instead of window.location.href
-                                            navigate(`/flights/${event.id}`, {
-                                              state: {
-                                                event,
-                                                originAirport,
-                                                airportToState,
-                                              }
-                                            });
-                                          }}
-                                          style={{
-                                            backgroundColor: '#0070f3',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '6px 12px',
-                                            borderRadius: '5px',
-                                            cursor: 'pointer',
-                                            fontSize: '0.9rem'
-                                          }}
-                                        >
-                                          View All Flights ({flightOffers[event.id].length})
-                                        </button>
-                                      </li>
-                                    )}
+                                    <li style={{ marginTop: '5px' }}>
+                                      <button
+                                        onClick={() => navigate(`/flights/${event.id}`)}
+                                        style={{
+                                          backgroundColor: '#0070f3',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '6px 12px',
+                                          borderRadius: '5px',
+                                          cursor: 'pointer',
+                                          fontSize: '0.9rem'
+                                        }}
+                                      >
+                                        View All Flights ({flightOffers[event.id].length})
+                                      </button>
+                                    </li>
+                                  )}
                                 </ul>
                               )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                ) : (
-                  <p className="no-concerts">No concerts found</p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-};
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <p className="no-concerts">No concerts found</p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
 
 export default TopArtistsList;
+
+
+
+
+
+
