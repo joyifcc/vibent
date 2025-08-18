@@ -555,15 +555,14 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                     const firstSegment = segments[0];
                                     const lastSegment = segments[segments.length - 1];
 
-                                    // Parse departure and arrival in UTC (ignores local shifts)
-                                    const departureUTC = DateTime.fromISO(firstSegment.departure.at, { zone: 'utc' });
-                                    const arrivalUTC = DateTime.fromISO(lastSegment.arrival.at, { zone: 'utc' });
+                                    const departure = DateTime.fromISO(firstSegment.departure.at); // keeps offset
+                                    const arrival = DateTime.fromISO(lastSegment.arrival.at);     // keeps offset
 
-                                    // Duration calculation in minutes
-                                    const durationMinutes = arrivalUTC.diff(departureUTC, 'minutes').minutes;
+                                    const durationMinutes = arrival.diff(departure, 'minutes').minutes;
                                     const hours = Math.floor(durationMinutes / 60);
                                     const minutes = Math.round(durationMinutes % 60);
                                     const durationStr = `${hours}h ${minutes}m`;
+
 
                                     // Airline names display
                                     const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
