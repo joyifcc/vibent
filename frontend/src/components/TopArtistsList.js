@@ -273,8 +273,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     const { state, date, country, id } = event;
     const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
   
-    console.log('Show flights clicked for event ID:', id);
-    console.log('Show flights clicked for event:', event);
+    // Avoid refetching if flights already loaded
+    if (flightOffers[id] && flightOffers[id].length > 0) return;
   
     if (!date) {
       alert('Missing concert date to fetch flights.');
@@ -287,7 +287,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       return;
     }
   
-    // Normalize and map state abbrev to full state name first
+    // Normalize state
     let normalizedState = '';
     if (state) {
       if (state.length === 2) {
@@ -296,35 +296,21 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
         normalizedState = toTitleCase(state.trim());
       }
     }
-  
     const normalizedCountry = country ? toTitleCase(country.trim()) : '';
-
-   
-  
-    console.log('Normalized State:', normalizedState);
-    console.log('Normalized Country:', normalizedCountry);
-  
     const lookupKeyState = normalizeKey(normalizedState);
     const lookupKeyCountry = normalizeKey(normalizedCountry);
   
-    console.log('Lookup Key State:', lookupKeyState);
-    console.log('Lookup Key Country:', lookupKeyCountry);
-  
-    // Strictly check if keys exist in mapping before using them
     let destinationAirports = [];
     if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
       destinationAirports = normalizedStateToAirports[lookupKeyState];
-      console.log('Using airports from state:', normalizedState, destinationAirports);
     } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
       destinationAirports = normalizedStateToAirports[lookupKeyCountry];
-      console.log('Using airports from country:', normalizedCountry, destinationAirports);
     } else {
-      console.warn('No airports found for:', normalizedState || normalizedCountry);
       alert(`No airport codes found for ${state || country}.`);
       return;
     }
   
-    if (!destinationAirports || destinationAirports.length === 0) {
+    if (!destinationAirports.length) {
       alert(`No airport codes found for ${state || country}.`);
       return;
     }
@@ -335,48 +321,33 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     startDate.setDate(startDate.getDate() - daysBefore);
     const endDate = new Date(eventDateObj);
     endDate.setDate(endDate.getDate() + daysAfter);
-  
     const formatDate = d => d.toISOString().split('T')[0];
     const departureDate = formatDate(startDate);
     const returnDate = formatDate(endDate);
-
-   
-  
-    console.log('Fetching flights for all destination airports:', destinationAirports);
   
     setLoadingFlights(prev => ({ ...prev, [id]: true }));
     setErrorFlights(prev => ({ ...prev, [id]: null }));
   
     try {
       let allFlights = [];
-  
-      // Sequential fetch per destination airport to avoid rate limits / API overload
       for (const destination of destinationAirports) {
         const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
-        console.log('Fetching flights from:', originAirport, 'to:', destination);
         const res = await fetch(url);
   
         if (!res.ok) {
           const text = await res.text();
-          throw new Error(`Flights API returned ${res.status} for destination ${destination}: ${text}`);
+          throw new Error(`Flights API returned ${res.status} for ${destination}: ${text}`);
         }
   
         const json = await res.json();
-  
         if (json.data?.length > 0) {
           allFlights = allFlights.concat(json.data);
         }
   
-        // Optional: small delay between requests to avoid hammering API
-        await delay(100);
+        await delay(100); // avoid hammering API
       }
   
-      // Optional: deduplicate flights if needed (by some unique id)
-      // For now, just setting all combined flights
-      setFlightOffers(prev => ({
-        ...prev,
-        [id]: allFlights
-      }));
+      setFlightOffers(prev => ({ ...prev, [id]: allFlights }));
     } catch (error) {
       console.error(`Error fetching flights for event ${id}:`, error);
       setErrorFlights(prev => ({ ...prev, [id]: error.message }));
@@ -384,7 +355,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     } finally {
       setLoadingFlights(prev => ({ ...prev, [id]: false }));
     }
-  };  
+  };
+  
   
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
@@ -528,27 +500,28 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
                             {/* Show Flights */}
                             <div style={{ marginTop: '8px' }}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!loadingFlights[event.id]) {
-                                    fetchFlightsForEvent(event);
-                                  }
-                                }}
-                                disabled={loadingFlights[event.id]}
-                                style={{
-                                  backgroundColor: loadingFlights[event.id] ? '#555' : '#0070f3',
-                                  color: 'white',
-                                  border: 'none',
-                                  padding: '5px 10px',
-                                  borderRadius: '5px',
-                                  cursor: loadingFlights[event.id] ? 'not-allowed' : 'pointer',
-                                  fontSize: '0.9rem'
-                                }}
-                              >
-                                {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
-                              </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+
+                                if (!flightOffers[event.id]?.length) {
+                                  fetchFlightsForEvent(event);
+                                }
+                              }}
+                              disabled={loadingFlights[event.id]}
+                              style={{
+                                backgroundColor: loadingFlights[event.id] ? '#555' : '#0070f3',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 10px',
+                                borderRadius: '5px',
+                                cursor: loadingFlights[event.id] ? 'not-allowed' : 'pointer',
+                                fontSize: '0.9rem'
+                              }}
+                            >
+                              {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
+                            </button>
                             </div>
 
                             {errorFlights[event.id] && (
