@@ -73,25 +73,26 @@ const FlightDetails = () => {
   if (flights.length === 0) return <p>No flights found.</p>;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2 style={{ marginBottom: "20px" }}>Flights for Event {eventId}</h2>
+    <div className="top-artists-container">
+      <h2 className="title">Flights for Event {eventId}</h2>
       {flights.map((flight, idx) => {
         const f = formatFlight(flight);
         if (!f) return null;
+  
         return (
           <div
             key={idx}
             style={{
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              padding: "15px",
-              marginBottom: "15px",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-              backgroundColor: "#fff",
+              background: "#1e1e1e",
+              borderRadius: "16px",
+              padding: "16px",
+              margin: "15px 0",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+              color: "#fff",
             }}
           >
             <p><strong>Airlines:</strong> {f.airlines}</p>
-            <p><strong>Price:</strong> ${f.price} {f.currency}</p>
+            <p><strong>Price:</strong> ${f.price}</p>
             <p><strong>Departure:</strong> {f.departure}</p>
             <p><strong>Arrival:</strong> {f.arrival}</p>
             <p><strong>Duration:</strong> {f.duration}</p>
@@ -102,5 +103,4 @@ const FlightDetails = () => {
     </div>
   );
 };
-
-export default FlightDetails;
+export default FlightDetails;  
