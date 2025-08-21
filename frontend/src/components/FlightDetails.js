@@ -159,49 +159,60 @@ const FlightDetails = () => {
         </select>
       </div>
 
-      {filteredFlights.length === 0 ? (
-        <p>No flights match your filters.</p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "20px",
-          }}
-        >
-          {filteredFlights.map((flight, idx) => {
-            const f = formatFlight(flight);
-            if (!f) return null;
+                {filteredFlights.length === 0 ? (
+            <p>No flights match your filters.</p>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", // wider cards
+                gap: "24px",
+                width: "100%",
+              }}
+            >
+              {filteredFlights.map((flight, idx) => {
+                const f = formatFlight(flight);
+                if (!f) return null;
 
-            return (
-              <div
-                key={idx}
-                style={{
-                  background: "#1e1e1e",
-                  borderRadius: "16px",
-                  padding: "16px",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                  color: "#fff",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <p><strong>Airlines:</strong> {f.airlines}</p>
-                  <p><strong>Price:</strong> ${f.price} {f.currency}</p>
-                  <p><strong>Departure:</strong> {f.departure}</p>
-                  <p><strong>Arrival:</strong> {f.arrival}</p>
-                </div>
-                <div style={{ marginTop: "10px", fontSize: "14px", color: "#aaa" }}>
-                  <p><strong>Duration:</strong> {f.duration}</p>
-                  <p><strong>Stops:</strong> {f.stops}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      background: "#1e1e1e",
+                      borderRadius: "16px",
+                      padding: "20px",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                      color: "#fff",
+                      display: "flex",
+                      flexDirection: "row", // lay items side by side
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    {/* Left section */}
+                    <div>
+                      <p><strong>Airlines:</strong> {f.airlines}</p>
+                      <p><strong>Departure:</strong> {f.departure}</p>
+                      <p><strong>Arrival:</strong> {f.arrival}</p>
+                    </div>
+
+                    {/* Right section (price + meta) */}
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#1DB954" }}>
+                        ${f.price} {f.currency}
+                      </p>
+                      <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                        Duration: {f.duration}
+                      </p>
+                      <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                        Stops: {f.stops}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
     </div>
   );
 };
