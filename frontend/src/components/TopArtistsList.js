@@ -623,7 +623,8 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                                 state: {
                                                   origin: originAirport,     // user-selected home airport
                                                   destination: destination,  // resolved airport
-                                                  departureDate: departureDate
+                                                  departureDate: departureDate,
+                                                  flights: flightOffers[event.id] || [],
                                                 }
                                               });
                                             }}
