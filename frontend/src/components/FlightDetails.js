@@ -11,7 +11,6 @@ const FlightDetails = () => {
   const [error, setError] = useState(null);
 
   // Filters
-  const [maxPrice, setMaxPrice] = useState("");
   const [maxStops, setMaxStops] = useState("");
   const [airportFilter, setAirportFilter] = useState("");
 
@@ -86,7 +85,6 @@ const FlightDetails = () => {
     const f = formatFlight(flight);
     if (!f) return false;
 
-    if (maxPrice && f.price > parseFloat(maxPrice)) return false;
     if (maxStops && f.stops > parseInt(maxStops)) return false;
     if (airportFilter && !(f.departure.includes(airportFilter) || f.arrival.includes(airportFilter))) {
       return false;
@@ -135,13 +133,6 @@ const FlightDetails = () => {
       >
         <input
           type="number"
-          placeholder="Max Price"
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-          style={{ padding: "8px", borderRadius: "8px" }}
-        />
-        <input
-          type="number"
           placeholder="Max Stops"
           value={maxStops}
           onChange={(e) => setMaxStops(e.target.value)}
@@ -171,31 +162,45 @@ const FlightDetails = () => {
       {filteredFlights.length === 0 ? (
         <p>No flights match your filters.</p>
       ) : (
-        filteredFlights.map((flight, idx) => {
-          const f = formatFlight(flight);
-          if (!f) return null;
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "20px",
+          }}
+        >
+          {filteredFlights.map((flight, idx) => {
+            const f = formatFlight(flight);
+            if (!f) return null;
 
-          return (
-            <div
-              key={idx}
-              style={{
-                background: "#1e1e1e",
-                borderRadius: "16px",
-                padding: "16px",
-                margin: "15px 0",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                color: "#fff",
-              }}
-            >
-              <p><strong>Airlines:</strong> {f.airlines}</p>
-              <p><strong>Price:</strong> ${f.price} {f.currency}</p>
-              <p><strong>Departure:</strong> {f.departure}</p>
-              <p><strong>Arrival:</strong> {f.arrival}</p>
-              <p><strong>Duration:</strong> {f.duration}</p>
-              <p><strong>Stops:</strong> {f.stops}</p>
-            </div>
-          );
-        })
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: "#1e1e1e",
+                  borderRadius: "16px",
+                  padding: "16px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  color: "#fff",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <p><strong>Airlines:</strong> {f.airlines}</p>
+                  <p><strong>Price:</strong> ${f.price} {f.currency}</p>
+                  <p><strong>Departure:</strong> {f.departure}</p>
+                  <p><strong>Arrival:</strong> {f.arrival}</p>
+                </div>
+                <div style={{ marginTop: "10px", fontSize: "14px", color: "#aaa" }}>
+                  <p><strong>Duration:</strong> {f.duration}</p>
+                  <p><strong>Stops:</strong> {f.stops}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
