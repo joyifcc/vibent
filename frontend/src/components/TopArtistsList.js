@@ -609,25 +609,65 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       );
                                     })}
 
-                                    {/* View All Flights Button */}
-                                  {flightOffers[event.id].length > 2 && (
-                                    <li style={{ marginTop: '5px' }}>
-                                      <button
-                                        onClick={() => navigate(`/flights/${event.id}`)}
-                                        style={{
-                                          backgroundColor: '#0070f3',
-                                          color: 'white',
-                                          border: 'none',
-                                          padding: '6px 12px',
-                                          borderRadius: '5px',
-                                          cursor: 'pointer',
-                                          fontSize: '0.9rem'
-                                        }}
-                                      >
-                                        View All Flights ({flightOffers[event.id].length})
-                                      </button>
-                                    </li>
-                                  )}
+                                                          {/* View All Flights Button */}
+                                      {flightOffers[event.id].length > 2 && (
+                                        <li style={{ marginTop: '5px' }}>
+                                          <button
+                                            onClick={() => {
+                                              // Reuse airport lookup logic
+                                              let normalizedState = '';
+                                              if (event.state) {
+                                                if (event.state.length === 2) {
+                                                  normalizedState = stateAbbrevToFull[event.state.toUpperCase()] || event.state;
+                                                } else {
+                                                  normalizedState = toTitleCase(event.state.trim());
+                                                }
+                                              }
+
+                                              const normalizedCountry = event.country ? toTitleCase(event.country.trim()) : '';
+                                              const lookupKeyState = normalizeKey(normalizedState);
+                                              const lookupKeyCountry = normalizeKey(normalizedCountry);
+
+                                              let destinationAirports = [];
+                                              if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
+                                                destinationAirports = normalizedStateToAirports[lookupKeyState];
+                                              } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
+                                                destinationAirports = normalizedStateToAirports[lookupKeyCountry];
+                                              }
+
+                                              if (!destinationAirports || destinationAirports.length === 0) {
+                                                alert(`No airport codes found for ${event.state || event.country}`);
+                                                return;
+                                              }
+
+                                              // Use the first destination airport (or expand UI later for multiple)
+                                              const destination = destinationAirports[0];
+
+                                              // Format departure date correctly
+                                              const departureDate = event.date.split("T")[0];
+
+                                              navigate(`/flights/${event.id}`, {
+                                                state: {
+                                                  origin: originAirport,     // user-selected home airport
+                                                  destination: destination,  // resolved airport
+                                                  departureDate: departureDate
+                                                }
+                                              });
+                                            }}
+                                            style={{
+                                              backgroundColor: '#0070f3',
+                                              color: 'white',
+                                              border: 'none',
+                                              padding: '6px 12px',
+                                              borderRadius: '5px',
+                                              cursor: 'pointer',
+                                              fontSize: '0.9rem'
+                                            }}
+                                          >
+                                            View All Flights ({flightOffers[event.id].length})
+                                          </button>
+                                        </li>
+                                      )}
                                 </ul>
                               )}
                             </li>
