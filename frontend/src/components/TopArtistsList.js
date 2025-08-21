@@ -573,7 +573,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                       return (
                                         <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
                                           <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                          <strong>Price:</strong> ${flight.price?.total} |&nbsp;
+                                          <strong>Price:</strong> ${flight.price?.total ?? "N/A"} |&nbsp;
                                           <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
                                           <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
                                           <strong>Duration:</strong> {durationStr} |&nbsp;
