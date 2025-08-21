@@ -109,21 +109,44 @@ function App() {
     return (
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
         justifyContent: 'center',
+        alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(to bottom, #191414, #1DB954)',
+        background: 'linear-gradient(135deg, #191414, #1DB954)',
         fontFamily: 'Helvetica, sans-serif',
-        color: 'white',
-        textAlign: 'center',
-        padding: '0 20px'
+        padding: '20px'
       }}>
-        <h1 style={{ fontSize: '4rem', marginBottom: '20px' }}>Vibent</h1>
-        <p style={{ fontSize: '1.3rem', marginBottom: '40px', maxWidth: '600px' }}>
-          Your Music, Your Concert, Your Travel, Your Vibes — All in One Place
-        </p>
-        <LoginButton onClick={handleLoginClick} backendUrl={BACKEND_URL} />
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.75)',
+          padding: '60px 40px',
+          borderRadius: '20px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.6)',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <h1 style={{ fontSize: '4rem', marginBottom: '15px', letterSpacing: '2px' }}>Vibent</h1>
+          <p style={{ fontSize: '1.2rem', marginBottom: '40px', lineHeight: '1.6', color: '#ddd' }}>
+            Discover your top artists, find concerts, and plan your travel — all in one place.
+          </p>
+          <LoginButton
+            onClick={handleLoginClick}
+            backendUrl={BACKEND_URL}
+            style={{
+              padding: '15px 40px',
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              borderRadius: '50px',
+              background: 'linear-gradient(to right, #1DB954, #1ed760)',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+              transition: 'all 0.3s ease-in-out',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              display: 'inline-block'
+            }}
+          />
+        </div>
       </div>
     );
   }
