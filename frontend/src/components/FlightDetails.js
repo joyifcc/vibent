@@ -35,6 +35,7 @@ const FlightDetails = () => {
     return {
       airlines: airlinesDisplay,
       price: flight.price?.total,
+      currency: flight.price?.currency || "USD",
       departure: firstSeg.departure.iataCode,
       arrival: lastSeg.arrival.iataCode,
       duration: durationStr,
@@ -69,18 +70,32 @@ const FlightDetails = () => {
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (loading) return <p>Loading flights...</p>;
-
   if (flights.length === 0) return <p>No flights found.</p>;
 
   return (
-    <div>
-      <h2>Flights for Event {eventId}</h2>
+    <div style={{ padding: "20px" }}>
+      <h2 style={{ marginBottom: "20px" }}>Flights for Event {eventId}</h2>
       {flights.map((flight, idx) => {
         const f = formatFlight(flight);
         if (!f) return null;
         return (
-          <div key={idx}>
-            Airlines: {f.airlines} | Price: ${f.price} | Depart: {f.departure} | Arrive: {f.arrival} | Duration: {f.duration} | Stops: {f.stops}
+          <div
+            key={idx}
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: "15px",
+              marginBottom: "15px",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+              backgroundColor: "#fff",
+            }}
+          >
+            <p><strong>Airlines:</strong> {f.airlines}</p>
+            <p><strong>Price:</strong> ${f.price} {f.currency}</p>
+            <p><strong>Departure:</strong> {f.departure}</p>
+            <p><strong>Arrival:</strong> {f.arrival}</p>
+            <p><strong>Duration:</strong> {f.duration}</p>
+            <p><strong>Stops:</strong> {f.stops}</p>
           </div>
         );
       })}
