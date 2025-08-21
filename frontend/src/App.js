@@ -114,14 +114,14 @@ function App() {
         justifyContent: 'center',
         minHeight: '100vh',
         background: 'linear-gradient(to bottom, #191414, #1DB954)',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Helvetica, sans-serif',
         color: 'white',
         textAlign: 'center',
         padding: '0 20px'
       }}>
         <h1 style={{ fontSize: '4rem', marginBottom: '20px' }}>Vibent</h1>
         <p style={{ fontSize: '1.3rem', marginBottom: '40px', maxWidth: '600px' }}>
-          Your Music, Your Concert, Your Travel, Your Vibes — All in one Place
+          Your Music, Your Concert, Your Travel, Your Vibes — All in One Place
         </p>
         <LoginButton onClick={handleLoginClick} backendUrl={BACKEND_URL} />
       </div>
@@ -137,7 +137,7 @@ function App() {
         alignItems: 'center',
         minHeight: '100vh',
         background: 'linear-gradient(to bottom, #191414, #1DB954)',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Helvetica, sans-serif',
         color: 'white'
       }}>
         <Routes>
