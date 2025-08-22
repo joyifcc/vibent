@@ -123,18 +123,16 @@ const FlightDetails = () => {
   const { state: navState } = useLocation();
   const {
     origin,
-    destinationAirports,  
+    destinationAirports = [],
     departureDate,
     flights: cachedFlights,
     eventState,
-    eventCountry,
     daysBefore = 0,
     daysAfter = 0,
   } = navState || {};
-  
 
   const [flights, setFlights] = useState(cachedFlights || []);
-  const [loading, setLoading] = useState(!cachedFlights || cachedFlights.length === 0);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Filters
@@ -144,12 +142,7 @@ const FlightDetails = () => {
   // Sort
   const [sortBy, setSortBy] = useState("");
 
-  // Airports dropdown for this event
-  const airportsForEvent =
-    (eventState && stateToAirports[eventState]) ||
-    (eventCountry && stateToAirports[eventCountry]) ||
-    [];
-
+  // Format flight for display
   const formatFlight = (flight) => {
     const itinerary = flight.itineraries?.[0];
     if (!itinerary || !itinerary.segments?.length) return null;
@@ -158,6 +151,7 @@ const FlightDetails = () => {
     const firstSeg = segments[0];
     const lastSeg = segments[segments.length - 1];
 
+    // Duration calculation: sum of all segment durations (ignore timezone differences)
     const totalDurationMinutes = segments.reduce((sum, seg) => {
       const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
       if (!match) return sum;
@@ -166,55 +160,55 @@ const FlightDetails = () => {
       return sum + hours * 60 + minutes;
     }, 0);
 
-    const durationStr = `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`;
-
     const airlineCodes = [...new Set(segments.map((seg) => seg.carrierCode))];
-    const airlinesDisplay = airlineCodes.join(", ");
 
     return {
-      airlines: airlinesDisplay,
+      airlines: airlineCodes.join(", "),
       price: parseFloat(flight.price?.total || 0),
       currency: flight.price?.currency || "USD",
-      departure: firstSeg.departure.iataCode,
-      arrival: lastSeg.arrival.iataCode,
-      duration: durationStr,
+      departure: {
+        iata: firstSeg.departure.iataCode,
+        time: formatWithTimezone(firstSeg.departure.at, eventState)
+      },
+      arrival: {
+        iata: lastSeg.arrival.iataCode,
+        time: formatWithTimezone(lastSeg.arrival.at, eventState)
+      },
       durationMinutes: totalDurationMinutes,
+      duration: `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`,
       stops: segments.length - 1,
     };
   };
 
   useEffect(() => {
-    // Only fetch if origin, departureDate, AND selectedAirport are all set
-    if (!origin || !selectedAirport || !departureDate) {
-      return; // Do nothing until user selects an airport
-    }
-  
+    if (!origin || !selectedAirport || !departureDate) return;
+
     const fetchFlights = async () => {
       setLoading(true);
       setError(null);
-  
+
       try {
         const BACKEND_URL =
           process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
-  
+
         const startDate = new Date(departureDate);
         startDate.setDate(startDate.getDate() - daysBefore);
         const endDate = new Date(departureDate);
         endDate.setDate(endDate.getDate() + daysAfter);
         const formatDate = (d) => d.toISOString().split("T")[0];
-  
+
         const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${selectedAirport}&departureDate=${formatDate(
           startDate
         )}&returnDate=${formatDate(endDate)}`;
-  
-        console.log("Fetching flights from:", url); // Debug
-  
+
+        console.log("Fetching flights from:", url);
+
         const res = await fetch(url);
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Flights API returned ${res.status}: ${text}`);
         }
-  
+
         const json = await res.json();
         setFlights(json.data || []);
       } catch (err) {
@@ -224,42 +218,27 @@ const FlightDetails = () => {
         setLoading(false);
       }
     };
-  
+
     fetchFlights();
   }, [origin, selectedAirport, departureDate, daysBefore, daysAfter]);
-  
-  
 
+  // Filter flights
+  let filteredFlights = flights
+    .map(formatFlight)
+    .filter((f) => f && (!maxStops || f.stops <= parseInt(maxStops)));
 
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
-  if (loading) return <p>Loading flights...</p>;
-  if (flights.length === 0) return <p>No flights found.</p>;
-
-  // Apply filters
-  let filteredFlights = flights.filter((flight) => {
-    const f = formatFlight(flight);
-    if (!f) return false;
-    if (maxStops && f.stops > parseInt(maxStops)) return false;
-    if (selectedAirport && f.arrival !== selectedAirport) return false;
-    return true;
-  });
-
-  // Apply sorting
+  // Sort flights
   if (sortBy) {
-    filteredFlights = [...filteredFlights].sort((a, b) => {
-      const fa = formatFlight(a);
-      const fb = formatFlight(b);
-      if (!fa || !fb) return 0;
-
+    filteredFlights.sort((a, b) => {
       switch (sortBy) {
         case "priceLowHigh":
-          return fa.price - fb.price;
+          return a.price - b.price;
         case "priceHighLow":
-          return fb.price - fa.price;
+          return b.price - a.price;
         case "duration":
-          return fa.durationMinutes - fb.durationMinutes;
+          return a.durationMinutes - b.durationMinutes;
         case "stops":
-          return fa.stops - fb.stops;
+          return a.stops - b.stops;
         default:
           return 0;
       }
@@ -290,20 +269,19 @@ const FlightDetails = () => {
           style={{ padding: "8px", borderRadius: "8px" }}
         />
 
-        {airportsForEvent.length > 0 && (
+        {destinationAirports.length > 0 && (
           <select
             value={selectedAirport}
             onChange={(e) => setSelectedAirport(e.target.value)}
             style={{ padding: "8px", borderRadius: "8px" }}
           >
             <option value="">Select Airport</option>
-            {airportsForEvent.map((code) => (
+            {destinationAirports.map((code) => (
               <option key={code} value={code}>
                 {code}
               </option>
             ))}
-        </select>
-        
+          </select>
         )}
 
         <select
@@ -319,72 +297,65 @@ const FlightDetails = () => {
         </select>
       </div>
 
-      {filteredFlights.length === 0 ? (
-        <p>No flights match your filters.</p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
-            gap: "24px",
-            width: "100%",
-          }}
-        >
-          {filteredFlights.map((flight, idx) => {
-            const f = formatFlight(flight);
-            if (!f) return null;
+      {loading && <p>Loading flights...</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {!loading && filteredFlights.length === 0 && <p>No flights found.</p>}
 
-            return (
-              <div
-                key={idx}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+          gap: "24px",
+          width: "100%",
+        }}
+      >
+        {filteredFlights.map((f, idx) => (
+          <div
+            key={idx}
+            style={{
+              background: "#1e1e1e",
+              borderRadius: "16px",
+              padding: "20px",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+              color: "#fff",
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <div>
+              <p>
+                <strong>Airlines:</strong> {f.airlines}
+              </p>
+              <p>
+                <strong>Departure:</strong> {f.departure.iata} - {f.departure.time}
+              </p>
+              <p>
+                <strong>Arrival:</strong> {f.arrival.iata} - {f.arrival.time}
+              </p>
+            </div>
+
+            <div style={{ textAlign: "right" }}>
+              <p
                 style={{
-                  background: "#1e1e1e",
-                  borderRadius: "16px",
-                  padding: "20px",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                  color: "#fff",
-                  display: "flex",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  fontSize: "1.2rem",
+                  fontWeight: "bold",
+                  color: "#1DB954",
                 }}
               >
-                <div>
-                  <p>
-                    <strong>Airlines:</strong> {f.airlines}
-                  </p>
-                  <p>
-                  <strong>Departure:</strong>{" "}
-                  {formatWithTimezone(flight.itineraries[0].segments[0].departure.at, eventState)}
-                </p>
-                <p>
-                  <strong>Arrival:</strong>{" "}
-                  {formatWithTimezone(flight.itineraries[0].segments.slice(-1)[0].arrival.at, eventState)}
-                </p>
-                </div>
-
-                <div style={{ textAlign: "right" }}>
-                  <p
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: "bold",
-                      color: "#1DB954",
-                    }}
-                  >
-                    ${f.price} {f.currency}
-                  </p>
-                  <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                    Duration: {f.duration}
-                  </p>
-                  <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                    Stops: {f.stops}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                ${f.price} {f.currency}
+              </p>
+              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                Duration: {f.duration}
+              </p>
+              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                Stops: {f.stops}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
