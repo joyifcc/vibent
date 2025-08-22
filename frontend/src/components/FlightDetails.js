@@ -178,6 +178,12 @@ const FlightDetails = () => {
     };
   };
 
+  useEffect(() => {
+    if (destinationAirports.length > 0 && !selectedAirport) {
+      setSelectedAirport(destinationAirports[0]);
+    }
+  }, [destinationAirports, selectedAirport]);
+
   // --- FIXED FETCH ---
   useEffect(() => {
     if (!origin || !selectedAirport || !departureDate || !returnDate) return;
