@@ -98,69 +98,6 @@ const airlineNames = {
   "YV": "Mesa Airlines",
 };
 
-const formatWithTimezone = (dateTimeStr, state) => {
-  const stateTimezones = {
-    "Alabama": "America/Chicago",
-    "Alaska": "America/Anchorage",
-    "Arizona": "America/Phoenix",
-    "Arkansas": "America/Chicago",
-    "California": "America/Los_Angeles",
-    "Colorado": "America/Denver",
-    "Connecticut": "America/New_York",
-    "Delaware": "America/New_York",
-    "District of Columbia": "America/New_York",
-    "Florida": "America/New_York", // see note below
-    "Georgia": "America/New_York",
-    "Hawaii": "Pacific/Honolulu",
-    "Idaho": "America/Boise", // mostly Mountain Time
-    "Illinois": "America/Chicago",
-    "Indiana": "America/Indiana/Indianapolis", // mostly Eastern
-    "Iowa": "America/Chicago",
-    "Kansas": "America/Chicago", // some parts Mountain Time, but mostly Chicago
-    "Kentucky": "America/New_York", // mostly Eastern
-    "Louisiana": "America/Chicago",
-    "Maine": "America/New_York",
-    "Maryland": "America/New_York",
-    "Massachusetts": "America/New_York",
-    "Michigan": "America/Detroit", // Eastern time
-    "Minnesota": "America/Chicago",
-    "Mississippi": "America/Chicago",
-    "Missouri": "America/Chicago",
-    "Montana": "America/Denver",
-    "Nebraska": "America/Chicago", // parts in Mountain Time, but mostly Chicago
-    "Nevada": "America/Los_Angeles", // parts in Mountain Time
-    "New Hampshire": "America/New_York",
-    "New Jersey": "America/New_York",
-    "New Mexico": "America/Denver",
-    "New York": "America/New_York",
-    "North Carolina": "America/New_York",
-    "North Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
-    "Ohio": "America/New_York",
-    "Oklahoma": "America/Chicago",
-    "Oregon": "America/Los_Angeles", // some parts in Mountain Time
-    "Pennsylvania": "America/New_York",
-    "Rhode Island": "America/New_York",
-    "South Carolina": "America/New_York",
-    "South Dakota": "America/Chicago", // parts Mountain Time but mostly Chicago
-    "Tennessee": "America/Chicago", // mostly Central Time (East Tennessee is Eastern)
-    "Texas": "America/Chicago", // mostly Central, but West Texas is Mountain Time
-    "Utah": "America/Denver",
-    "Vermont": "America/New_York",
-    "Virginia": "America/New_York",
-    "Washington": "America/Los_Angeles",
-    "West Virginia": "America/New_York",
-    "Wisconsin": "America/Chicago",
-    "Wyoming": "America/Denver"
-  };
-
-  const timezone = stateTimezones[state] || "UTC";
-  return DateTime.fromISO(dateTimeStr) 
-    .setZone(timezone)
-    .toFormat("MMM dd, yyyy hh:mm a ZZZZ");
-};
-
-
-
 
 console.log('Raw stateToAirports:', stateToAirports);
 console.log('Is empty?', Object.keys(stateToAirports).length === 0);
@@ -265,6 +202,48 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
       fetchConcerts();
     }
   }, [topArtists]);
+
+
+    // Add this **above** the return() but inside your TopArtistsList component
+          const handleShowFlights = (event) => {
+            if (!originAirport) {
+              alert("Please select your home airport first.");
+              return;
+            }
+
+            // Normalize the state string
+            const normalizedState =
+              event.state?.length === 2
+                ? stateAbbrevToFull[event.state.toUpperCase()] || event.state
+                : toTitleCase(event.state || '');
+
+            // Lookup all airports for that state
+            const destinationAirports = normalizedState
+              ? stateToAirports[normalizedState] || []
+              : [];
+
+            if (!destinationAirports.length) {
+              alert(`No airport codes found for ${event.state}`);
+              return;
+            }
+
+            if (!event.date) {
+              alert("Event date is missing. Cannot show flights.");
+              return;
+            }
+
+            navigate(`/flights/${event.id}`, {
+              state: {
+                origin: originAirport,           // user-selected
+                destinationAirports,             // all airports in concert's state
+                departureDate: event.date,       // concert date
+                daysBefore,                      // user input
+                daysAfter,                       // user input
+                eventState: event.state,
+                eventCountry: event.country,
+              },
+            });
+          };
 
   
   // Flatten and deduplicate airport codes for origin airport dropdown
@@ -411,56 +390,7 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                                 <div style={{ marginTop: '8px' }}>
                                 <button
                                     type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-
-                                      // Normalize state
-                                      let normalizedState = '';
-                                      if (event.state) {
-                                        if (event.state.length === 2) {
-                                          normalizedState =
-                                            stateAbbrevToFull[event.state.toUpperCase()] || event.state;
-                                        } else {
-                                          normalizedState = toTitleCase(event.state.trim());
-                                        }
-                                      }
-
-                                      // Lookup airports for the event’s state (or country fallback)
-                                      const lookupKeyState = normalizeKey(normalizedState);
-                                      const lookupKeyCountry = normalizeKey(
-                                        toTitleCase(event.country || '').trim()
-                                      );
-                                      let destinationAirports = [];
-                                      if (
-                                        lookupKeyState &&
-                                        normalizedStateToAirports.hasOwnProperty(lookupKeyState)
-                                      ) {
-                                        destinationAirports = normalizedStateToAirports[lookupKeyState];
-                                      } else if (
-                                        lookupKeyCountry &&
-                                        normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)
-                                      ) {
-                                        destinationAirports = normalizedStateToAirports[lookupKeyCountry];
-                                      }
-
-                                      if (!destinationAirports.length) {
-                                        alert(`No airport codes found for ${event.state || event.country}`);
-                                        return;
-                                      }
-
-                                      // Navigate to FlightDetails page with event + airports + flexible dates
-                                      navigate(`/flights/${event.id}`, {
-                                        state: {
-                                          origin: originAirport,          // must be defined
-                                          destinationAirports,            // determined above
-                                          departureDate: event.date,      // event date
-                                          daysBefore,                     // from user's input
-                                          daysAfter,                      // from user's input
-                                          eventState: event.state,
-                                          eventCountry: event.country,
-                                        },
-                                      });
-                                    }}
+                                    onClick={() => handleShowFlights(event)}
                                     style={{
                                       backgroundColor: '#0070f3',
                                       color: 'white',
