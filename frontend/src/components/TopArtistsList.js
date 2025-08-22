@@ -188,9 +188,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
   const [daysBefore, setDaysBefore] = useState(1);
   const [daysAfter, setDaysAfter] = useState(1);
 
-  const [flightOffers, setFlightOffers] = useState({});
-  const [loadingFlights, setLoadingFlights] = useState({});
-  const [errorFlights, setErrorFlights] = useState({});
 
   const toggleExpanded = (artistName) => {
     setExpandedArtists(prev => ({
@@ -269,94 +266,6 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
     }
   }, [topArtists]);
 
-  const fetchFlightsForEvent = async (event) => {
-    const { state, date, country, id } = event;
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vibent-api.onrender.com';
-  
-    // Avoid refetching if flights already loaded
-    if (flightOffers[id] && flightOffers[id].length > 0) return;
-  
-    if (!date) {
-      alert('Missing concert date to fetch flights.');
-      return;
-    }
-  
-    if (!id) {
-      console.warn('Event missing unique id:', event);
-      alert('Cannot fetch flights: event ID missing.');
-      return;
-    }
-  
-    // Normalize state
-    let normalizedState = '';
-    if (state) {
-      if (state.length === 2) {
-        normalizedState = stateAbbrevToFull[state.toUpperCase()] || state;
-      } else {
-        normalizedState = toTitleCase(state.trim());
-      }
-    }
-    const normalizedCountry = country ? toTitleCase(country.trim()) : '';
-    const lookupKeyState = normalizeKey(normalizedState);
-    const lookupKeyCountry = normalizeKey(normalizedCountry);
-  
-    let destinationAirports = [];
-    if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
-      destinationAirports = normalizedStateToAirports[lookupKeyState];
-    } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
-      destinationAirports = normalizedStateToAirports[lookupKeyCountry];
-    } else {
-      alert(`No airport codes found for ${state || country}.`);
-      return;
-    }
-  
-    if (!destinationAirports.length) {
-      alert(`No airport codes found for ${state || country}.`);
-      return;
-    }
-  
-    // Compute flexible date range
-    const eventDateObj = new Date(date);
-    const startDate = new Date(eventDateObj);
-    startDate.setDate(startDate.getDate() - daysBefore);
-    const endDate = new Date(eventDateObj);
-    endDate.setDate(endDate.getDate() + daysAfter);
-    const formatDate = d => d.toISOString().split('T')[0];
-    const departureDate = formatDate(startDate);
-    const returnDate = formatDate(endDate);
-  
-    setLoadingFlights(prev => ({ ...prev, [id]: true }));
-    setErrorFlights(prev => ({ ...prev, [id]: null }));
-  
-    try {
-      let allFlights = [];
-      for (const destination of destinationAirports) {
-        const url = `${BACKEND_URL}/flights?origin=${originAirport}&destination=${destination}&departureDate=${departureDate}&returnDate=${returnDate}`;
-        const res = await fetch(url);
-  
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Flights API returned ${res.status} for ${destination}: ${text}`);
-        }
-  
-        const json = await res.json();
-        if (json.data?.length > 0) {
-          allFlights = allFlights.concat(json.data);
-        }
-  
-        await delay(100); // avoid hammering API
-      }
-  
-      setFlightOffers(prev => ({ ...prev, [id]: allFlights }));
-    } catch (error) {
-      console.error(`Error fetching flights for event ${id}:`, error);
-      setErrorFlights(prev => ({ ...prev, [id]: error.message }));
-      setFlightOffers(prev => ({ ...prev, [id]: [] }));
-    } finally {
-      setLoadingFlights(prev => ({ ...prev, [id]: false }));
-    }
-  };
-  
   
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
@@ -498,55 +407,74 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
                               {event.name}
                             </a> — {event.date} @ {event.venue}
 
-                            {/* Show Flights */}
-                            <div style={{ marginTop: '8px' }}>
+                           {/* Show Flights */}
+                                <div style={{ marginTop: '8px' }}>
                                 <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
 
-                                    // Normalize state
-                                    let normalizedState = '';
-                                    if (event.state) {
-                                      if (event.state.length === 2) {
-                                        normalizedState = stateAbbrevToFull[event.state.toUpperCase()] || event.state;
-                                      } else {
-                                        normalizedState = toTitleCase(event.state.trim());
+                                      // Normalize state
+                                      let normalizedState = '';
+                                      if (event.state) {
+                                        if (event.state.length === 2) {
+                                          normalizedState =
+                                            stateAbbrevToFull[event.state.toUpperCase()] || event.state;
+                                        } else {
+                                          normalizedState = toTitleCase(event.state.trim());
+                                        }
                                       }
-                                    }
 
-                                    // Lookup airports for the event’s state (or country fallback)
-                                    const lookupKeyState = normalizeKey(normalizedState);
-                                    const lookupKeyCountry = normalizeKey(toTitleCase(event.country || '').trim());
-                                    let destinationAirports = [];
-                                    if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
-                                      destinationAirports = normalizedStateToAirports[lookupKeyState];
-                                    } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
-                                      destinationAirports = normalizedStateToAirports[lookupKeyCountry];
-                                    }
+                                      // Lookup airports for the event’s state (or country fallback)
+                                      const lookupKeyState = normalizeKey(normalizedState);
+                                      const lookupKeyCountry = normalizeKey(
+                                        toTitleCase(event.country || '').trim()
+                                      );
+                                      let destinationAirports = [];
+                                      if (
+                                        lookupKeyState &&
+                                        normalizedStateToAirports.hasOwnProperty(lookupKeyState)
+                                      ) {
+                                        destinationAirports = normalizedStateToAirports[lookupKeyState];
+                                      } else if (
+                                        lookupKeyCountry &&
+                                        normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)
+                                      ) {
+                                        destinationAirports = normalizedStateToAirports[lookupKeyCountry];
+                                      }
 
-                                    // Navigate to FlightDetails with event info + possible airports
-                                    navigate(`/flights/${event.id}`, {
-                                      state: {
-                                        origin: originAirport,
-                                        destinationAirports,
-                                        event,
-                                      },
-                                    });
-                                  }}
-                                  style={{
-                                    backgroundColor: '#0070f3',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '5px 10px',
-                                    borderRadius: '5px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.9rem'
-                                  }}
-                                >
-                                  Show Flights
-                                </button>
-                              </div>
+                                      if (!destinationAirports.length) {
+                                        alert(`No airport codes found for ${event.state || event.country}`);
+                                        return;
+                                      }
+
+                                      // Navigate to FlightDetails page with event + airports + flexible dates
+                                      navigate(`/flights/${event.id}`, {
+                                        state: {
+                                          origin: originAirport,          // must be defined
+                                          destinationAirports,            // determined above
+                                          departureDate: event.date,      // event date
+                                          daysBefore,                     // from user's input
+                                          daysAfter,                      // from user's input
+                                          eventState: event.state,
+                                          eventCountry: event.country,
+                                        },
+                                      });
+                                    }}
+                                    style={{
+                                      backgroundColor: '#0070f3',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '5px 10px',
+                                      borderRadius: '5px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.9rem',
+                                    }}
+                                  >
+                                    Show Flights
+                                  </button>
+
+                                </div>
                             </li>
                           ))}
                         </ul>
