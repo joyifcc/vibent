@@ -500,150 +500,53 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
                             {/* Show Flights */}
                             <div style={{ marginTop: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
 
-                                if (!flightOffers[event.id]?.length) {
-                                  fetchFlightsForEvent(event);
-                                }
-                              }}
-                              disabled={loadingFlights[event.id]}
-                              style={{
-                                backgroundColor: loadingFlights[event.id] ? '#555' : '#0070f3',
-                                color: 'white',
-                                border: 'none',
-                                padding: '5px 10px',
-                                borderRadius: '5px',
-                                cursor: loadingFlights[event.id] ? 'not-allowed' : 'pointer',
-                                fontSize: '0.9rem'
-                              }}
-                            >
-                              {loadingFlights[event.id] ? 'Loading Flights...' : 'Show Flights'}
-                            </button>
-                            </div>
+                                    // Normalize state
+                                    let normalizedState = '';
+                                    if (event.state) {
+                                      if (event.state.length === 2) {
+                                        normalizedState = stateAbbrevToFull[event.state.toUpperCase()] || event.state;
+                                      } else {
+                                        normalizedState = toTitleCase(event.state.trim());
+                                      }
+                                    }
 
-                            {errorFlights[event.id] && (
-                              <p style={{ color: 'red' }}>Error loading flights: {errorFlights[event.id]}</p>
-                            )}
+                                    // Lookup airports for the event’s state (or country fallback)
+                                    const lookupKeyState = normalizeKey(normalizedState);
+                                    const lookupKeyCountry = normalizeKey(toTitleCase(event.country || '').trim());
+                                    let destinationAirports = [];
+                                    if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
+                                      destinationAirports = normalizedStateToAirports[lookupKeyState];
+                                    } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
+                                      destinationAirports = normalizedStateToAirports[lookupKeyCountry];
+                                    }
 
-                              {flightOffers[event.id]?.length > 0 && (
-                                <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
-                                  {flightOffers[event.id]
-                                    .slice(0, 2) // Show only first 2 flights as preview
-                                    .map((flight, idx) => {
-                                      const itinerary = flight.itineraries?.[0];
-                                      if (!itinerary) return null;
-
-                                      const segments = itinerary.segments || [];
-                                      if (segments.length === 0) return null;
-
-                                      const firstSegment = segments[0];
-                                      const lastSegment = segments[segments.length - 1];
-
-                                      // Flight duration
-                                      const totalDurationMinutes = segments.reduce((sum, seg) => {
-                                        const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-                                        if (!match) return sum;
-                                        const hours = parseInt(match[1] || 0);
-                                        const minutes = parseInt(match[2] || 0);
-                                        return sum + hours * 60 + minutes;
-                                      }, 0);
-
-                                      const durationHours = Math.floor(totalDurationMinutes / 60);
-                                      const durationMinutes = totalDurationMinutes % 60;
-                                      const durationStr = `${durationHours}h ${durationMinutes}m`;
-
-                                      // Convert to local timezones
-                                      const departureState = airportToState[firstSegment.departure.iataCode] || 'UTC';
-                                      const arrivalState = airportToState[lastSegment.arrival.iataCode] || 'UTC';
-                                      const departureLocal = formatWithTimezone(firstSegment.departure.at, departureState);
-                                      const arrivalLocal = formatWithTimezone(lastSegment.arrival.at, arrivalState);
-
-                                      // Airline display
-                                      const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
-                                      const airlineNamesList = airlineCodes.map(code => airlineNames[code] || code);
-                                      const airlinesDisplay = airlineNamesList
-                                        .map((name, i) => `${name} (${airlineCodes[i]})`)
-                                        .join(', ');
-
-                                        
-
-                                      return (
-                                        <li key={idx} style={{ fontSize: '0.9rem', marginBottom: '8px' }}>
-                                          <strong>Airline(s):</strong> {airlinesDisplay} |&nbsp;
-                                          <strong>Price:</strong> ${flight.price?.total ?? "N/A"} |&nbsp;
-                                          <strong>Depart:</strong> {departureLocal} ({firstSegment.departure.iataCode}) |&nbsp;
-                                          <strong>Arrive:</strong> {arrivalLocal} ({lastSegment.arrival.iataCode}) |&nbsp;
-                                          <strong>Duration:</strong> {durationStr} |&nbsp;
-                                          <strong>Stops:</strong> {segments.length - 1}
-                                        </li>
-                                      );
-                                    })}
-
-                                                          {/* View All Flights Button */}
-                                      {flightOffers[event.id].length > 2 && (
-                                        <li style={{ marginTop: '5px' }}>
-                                          <button
-                                            onClick={() => {
-                                              // Reuse airport lookup logic
-                                              let normalizedState = '';
-                                              if (event.state) {
-                                                if (event.state.length === 2) {
-                                                  normalizedState = stateAbbrevToFull[event.state.toUpperCase()] || event.state;
-                                                } else {
-                                                  normalizedState = toTitleCase(event.state.trim());
-                                                }
-                                              }
-
-                                              const normalizedCountry = event.country ? toTitleCase(event.country.trim()) : '';
-                                              const lookupKeyState = normalizeKey(normalizedState);
-                                              const lookupKeyCountry = normalizeKey(normalizedCountry);
-
-                                              let destinationAirports = [];
-                                              if (lookupKeyState && normalizedStateToAirports.hasOwnProperty(lookupKeyState)) {
-                                                destinationAirports = normalizedStateToAirports[lookupKeyState];
-                                              } else if (lookupKeyCountry && normalizedStateToAirports.hasOwnProperty(lookupKeyCountry)) {
-                                                destinationAirports = normalizedStateToAirports[lookupKeyCountry];
-                                              }
-
-                                              if (!destinationAirports || destinationAirports.length === 0) {
-                                                alert(`No airport codes found for ${event.state || event.country}`);
-                                                return;
-                                              }
-
-                                              // Use the first destination airport (or expand UI later for multiple)
-                                              const destination = destinationAirports[0];
-
-                                              // Format departure date correctly
-                                              const departureDate = event.date.split("T")[0];
-
-                                              navigate(`/flights/${event.id}`, {
-                                                state: {
-                                                  origin: originAirport,     // user-selected home airport
-                                                  destination: destination,  // resolved airport
-                                                  departureDate: departureDate,
-                                                  flights: flightOffers[event.id] || [],
-                                                }
-                                              });
-                                            }}
-                                            style={{
-                                              backgroundColor: '#0070f3',
-                                              color: 'white',
-                                              border: 'none',
-                                              padding: '6px 12px',
-                                              borderRadius: '5px',
-                                              cursor: 'pointer',
-                                              fontSize: '0.9rem'
-                                            }}
-                                          >
-                                            View All Flights ({flightOffers[event.id].length})
-                                          </button>
-                                        </li>
-                                      )}
-                                </ul>
-                              )}
+                                    // Navigate to FlightDetails with event info + possible airports
+                                    navigate(`/flights/${event.id}`, {
+                                      state: {
+                                        origin: originAirport,
+                                        destinationAirports,
+                                        event,
+                                      },
+                                    });
+                                  }}
+                                  style={{
+                                    backgroundColor: '#0070f3',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '5px 10px',
+                                    borderRadius: '5px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem'
+                                  }}
+                                >
+                                  Show Flights
+                                </button>
+                              </div>
                             </li>
                           ))}
                         </ul>

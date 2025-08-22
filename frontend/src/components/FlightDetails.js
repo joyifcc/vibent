@@ -55,11 +55,19 @@ const stateToAirports = {
   "Wyoming": ["JAC"], // Jackson Hole
 };
 
-
 const FlightDetails = () => {
   const { eventId } = useParams();
   const { state: navState } = useLocation();
-  const { origin, destination, departureDate, flights: cachedFlights, eventState, eventCountry } = navState || {};
+  const {
+    origin,
+    destination: destinationAirports,
+    departureDate,
+    flights: cachedFlights,
+    eventState,
+    eventCountry,
+    daysBefore = 0,
+    daysAfter = 0,
+  } = navState || {};
 
   const [flights, setFlights] = useState(cachedFlights || []);
   const [loading, setLoading] = useState(!cachedFlights || cachedFlights.length === 0);
@@ -72,13 +80,12 @@ const FlightDetails = () => {
   // Sort
   const [sortBy, setSortBy] = useState("");
 
-  // 🔽 Build dropdown airport list for this event
+  // Airports dropdown for this event
   const airportsForEvent =
     (eventState && stateToAirports[eventState]) ||
     (eventCountry && stateToAirports[eventCountry]) ||
     [];
 
-  // Helper to format flight info
   const formatFlight = (flight) => {
     const itinerary = flight.itineraries?.[0];
     if (!itinerary || !itinerary.segments?.length) return null;
@@ -119,26 +126,53 @@ const FlightDetails = () => {
       return;
     }
 
-    if (!origin || !destination || !departureDate) {
+    if (!origin || !destinationAirports?.length || !departureDate) {
       setError("Missing required flight parameters");
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    const BACKEND_URL =
-      process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
-    fetch(
-      `${BACKEND_URL}/flights?origin=${origin}&destination=${destination}&departureDate=${departureDate}`
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error(`Flights API returned ${res.status}`);
-        return res.json();
-      })
-      .then((data) => setFlights(data.data || []))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [origin, destination, departureDate, cachedFlights]);
+    const fetchFlights = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const BACKEND_URL =
+          process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
+
+        // Compute flexible date range
+        const startDate = new Date(departureDate);
+        startDate.setDate(startDate.getDate() - daysBefore);
+        const endDate = new Date(departureDate);
+        endDate.setDate(endDate.getDate() + daysAfter);
+        const formatDate = (d) => d.toISOString().split("T")[0];
+
+        let allFlights = [];
+
+        for (const dest of destinationAirports) {
+          const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${dest}&departureDate=${formatDate(
+            startDate
+          )}&returnDate=${formatDate(endDate)}`;
+          const res = await fetch(url);
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Flights API returned ${res.status}: ${text}`);
+          }
+          const json = await res.json();
+          if (json.data?.length > 0) allFlights = allFlights.concat(json.data);
+          await new Promise((r) => setTimeout(r, 100)); // avoid hammering API
+        }
+
+        setFlights(allFlights);
+      } catch (err) {
+        setError(err.message);
+        setFlights([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFlights();
+  }, [origin, destinationAirports, departureDate, cachedFlights, daysBefore, daysAfter]);
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (loading) return <p>Loading flights...</p>;
@@ -148,10 +182,8 @@ const FlightDetails = () => {
   let filteredFlights = flights.filter((flight) => {
     const f = formatFlight(flight);
     if (!f) return false;
-
     if (maxStops && f.stops > parseInt(maxStops)) return false;
     if (selectedAirport && f.arrival !== selectedAirport) return false;
-
     return true;
   });
 
@@ -201,7 +233,6 @@ const FlightDetails = () => {
           style={{ padding: "8px", borderRadius: "8px" }}
         />
 
-        {/* ✅ Airport Dropdown */}
         {airportsForEvent.length > 0 && (
           <select
             value={selectedAirport}
