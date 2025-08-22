@@ -1,10 +1,65 @@
 import { useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
+const stateToAirports = {
+  "Alabama": ["BHM", "HSV", "MGM", "MOB"], // Birmingham, Huntsville, Montgomery, Mobile
+  "Alaska": ["ANC", "FAI", "JNU", "SEA"], // Anchorage, Fairbanks, Juneau, plus Seattle (common hub)
+  "Arizona": ["PHX", "TUS", "SDL"], // Phoenix, Tucson, Scottsdale (private/charter)
+  "Arkansas": ["XNA", "LIT", "FSM"], // Northwest Arkansas, Little Rock, Fort Smith
+  "California": ["LAX", "SFO", "SAN", "SJC", "OAK", "SMF", "BUR", "ONT", "SNA", "LGB"], // Major CA airports
+  "Colorado": ["DEN", "COS", "GJT"], // Denver, Colorado Springs, Grand Junction
+  "Connecticut": ["BDL", "HVN"], // Bradley (Hartford), Tweed New Haven
+  "Delaware": ["ILG"], // Wilmington (small, near Philadelphia)
+  "District of Columbia": ["DCA", "IAD", "BWI"], // Reagan, Dulles, Baltimore-Washington
+  "Florida": ["MIA", "FLL", "TPA", "MCO", "RSW", "JAX", "PBI"], // Miami, Fort Lauderdale, Tampa, Orlando, Southwest Florida, Jacksonville, Palm Beach
+  "Georgia": ["ATL", "SAV", "AGS", "MCN"], // Atlanta, Savannah, Augusta, Macon
+  "Hawaii": ["HNL", "OGG", "KOA", "LIH"], // Honolulu, Maui, Kona, Lihue
+  "Idaho": ["BOI", "IDA"], // Boise, Idaho Falls
+  "Illinois": ["ORD", "MDW", "SPI", "RFD"], // O’Hare, Midway, Springfield, Rockford
+  "Indiana": ["IND", "SBN"], // Indianapolis, South Bend
+  "Iowa": ["DSM", "CID", "MLI"], // Des Moines, Cedar Rapids, Moline
+  "Kansas": ["ICT", "MCI", "FOE"], // Wichita, Kansas City, Topeka
+  "Kentucky": ["CVG", "SDF", "LEX"], // Cincinnati/Northern KY, Louisville, Lexington
+  "Louisiana": ["MSY", "BTR", "LFT"], // New Orleans, Baton Rouge, Lafayette
+  "Maine": ["PWM", "BGR"], // Portland, Bangor
+  "Maryland": ["BWI", "MTN"], // Baltimore-Washington, Martin State
+  "Massachusetts": ["BOS", "ORH", "EWB"], // Boston Logan, Worcester, New Bedford
+  "Michigan": ["DTW", "GRR", "MBS", "AZO"], // Detroit, Grand Rapids, Saginaw, Kalamazoo
+  "Minnesota": ["MSP", "DLH", "RST"], // Minneapolis-St Paul, Duluth, Rochester
+  "Mississippi": ["JAN", "GPT"], // Jackson, Gulfport
+  "Missouri": ["STL", "MCI", "SGF"], // St. Louis, Kansas City, Springfield
+  "Montana": ["BIL", "GTF", "MSO"], // Billings, Great Falls, Missoula
+  "Nebraska": ["OMA", "LNK"], // Omaha, Lincoln
+  "Nevada": ["LAS", "RNO"], // Las Vegas, Reno
+  "New Hampshire": ["MHT", "CON"], // Manchester, Concord (small)
+  "New Jersey": ["EWR", "ACY", "TTN"], // Newark, Atlantic City, Trenton-Mercer
+  "New Mexico": ["ABQ", "SRR"], // Albuquerque, Santa Rosa (small)
+  "New York": ["JFK", "LGA", "EWR", "BUF", "ROC", "SYR", "ALB"], // JFK, LaGuardia, Newark, Buffalo, Rochester, Syracuse, Albany
+  "North Carolina": ["CLT", "RDU", "GSO", "ILM"], // Charlotte, Raleigh-Durham, Greensboro, Wilmington
+  "North Dakota": ["FAR", "GFK"], // Fargo, Grand Forks
+  "Ohio": ["CLE", "CMH", "CVG", "DAY"], // Cleveland, Columbus, Cincinnati, Dayton
+  "Oklahoma": ["OKC", "TUL"], // Oklahoma City, Tulsa
+  "Oregon": ["PDX", "EUG"], // Portland, Eugene
+  "Pennsylvania": ["PHL", "PIT", "AVP", "MDT"], // Philadelphia, Pittsburgh, Wilkes-Barre/Scranton, Harrisburg
+  "Rhode Island": ["PVD"], // Providence
+  "South Carolina": ["CHS", "GSP", "CAE"], // Charleston, Greenville-Spartanburg, Columbia
+  "South Dakota": ["FSD", "RAP"], // Sioux Falls, Rapid City
+  "Tennessee": ["BNA", "MEM", "CHA"], // Nashville, Memphis, Chattanooga
+  "Texas": ["DFW", "IAH", "AUS", "SAT", "DAL", "HOU"], // Dallas-Fort Worth, Houston, Austin, San Antonio, Dallas Love, Houston Hobby
+  "Utah": ["SLC", "PVU"], // Salt Lake City, Provo (small)
+  "Vermont": ["BTV"], // Burlington
+  "Virginia": ["DCA", "ORF", "RIC"], // Reagan, Norfolk, Richmond
+  "Washington": ["SEA", "GEG", "PDX"], // Seattle, Spokane, Portland (nearby)
+  "West Virginia": ["CRW", "HTS"], // Charleston, Huntington
+  "Wisconsin": ["MKE", "MSN", "GRB"], // Milwaukee, Madison, Green Bay
+  "Wyoming": ["JAC"], // Jackson Hole
+};
+
+
 const FlightDetails = () => {
   const { eventId } = useParams();
-  const { state } = useLocation();
-  const { origin, destination, departureDate, flights: cachedFlights } = state || {};
+  const { state: navState } = useLocation();
+  const { origin, destination, departureDate, flights: cachedFlights, eventState, eventCountry } = navState || {};
 
   const [flights, setFlights] = useState(cachedFlights || []);
   const [loading, setLoading] = useState(!cachedFlights || cachedFlights.length === 0);
@@ -12,10 +67,16 @@ const FlightDetails = () => {
 
   // Filters
   const [maxStops, setMaxStops] = useState("");
-  const [airportFilter, setAirportFilter] = useState("");
+  const [selectedAirport, setSelectedAirport] = useState("");
 
   // Sort
   const [sortBy, setSortBy] = useState("");
+
+  // 🔽 Build dropdown airport list for this event
+  const airportsForEvent =
+    (eventState && stateToAirports[eventState]) ||
+    (eventCountry && stateToAirports[eventCountry]) ||
+    [];
 
   // Helper to format flight info
   const formatFlight = (flight) => {
@@ -36,7 +97,7 @@ const FlightDetails = () => {
 
     const durationStr = `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`;
 
-    const airlineCodes = [...new Set(segments.map(seg => seg.carrierCode))];
+    const airlineCodes = [...new Set(segments.map((seg) => seg.carrierCode))];
     const airlinesDisplay = airlineCodes.join(", ");
 
     return {
@@ -65,8 +126,11 @@ const FlightDetails = () => {
     }
 
     setLoading(true);
-    const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
-    fetch(`${BACKEND_URL}/flights?origin=${origin}&destination=${destination}&departureDate=${departureDate}`)
+    const BACKEND_URL =
+      process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
+    fetch(
+      `${BACKEND_URL}/flights?origin=${origin}&destination=${destination}&departureDate=${departureDate}`
+    )
       .then((res) => {
         if (!res.ok) throw new Error(`Flights API returned ${res.status}`);
         return res.json();
@@ -86,9 +150,7 @@ const FlightDetails = () => {
     if (!f) return false;
 
     if (maxStops && f.stops > parseInt(maxStops)) return false;
-    if (airportFilter && !(f.departure.includes(airportFilter) || f.arrival.includes(airportFilter))) {
-      return false;
-    }
+    if (selectedAirport && f.arrival !== selectedAirport) return false;
 
     return true;
   });
@@ -138,13 +200,22 @@ const FlightDetails = () => {
           onChange={(e) => setMaxStops(e.target.value)}
           style={{ padding: "8px", borderRadius: "8px" }}
         />
-        <input
-          type="text"
-          placeholder="Airport Code (ex: JFK)"
-          value={airportFilter}
-          onChange={(e) => setAirportFilter(e.target.value.toUpperCase())}
-          style={{ padding: "8px", borderRadius: "8px" }}
-        />
+
+        {/* ✅ Airport Dropdown */}
+        {airportsForEvent.length > 0 && (
+          <select
+            value={selectedAirport}
+            onChange={(e) => setSelectedAirport(e.target.value)}
+            style={{ padding: "8px", borderRadius: "8px" }}
+          >
+            <option value="">All Airports</option>
+            {airportsForEvent.map((code) => (
+              <option key={code} value={code}>
+                {code}
+              </option>
+            ))}
+          </select>
+        )}
 
         <select
           value={sortBy}
@@ -159,60 +230,70 @@ const FlightDetails = () => {
         </select>
       </div>
 
-                {filteredFlights.length === 0 ? (
-            <p>No flights match your filters.</p>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", // wider cards
-                gap: "24px",
-                width: "100%",
-              }}
-            >
-              {filteredFlights.map((flight, idx) => {
-                const f = formatFlight(flight);
-                if (!f) return null;
+      {filteredFlights.length === 0 ? (
+        <p>No flights match your filters.</p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+            gap: "24px",
+            width: "100%",
+          }}
+        >
+          {filteredFlights.map((flight, idx) => {
+            const f = formatFlight(flight);
+            if (!f) return null;
 
-                return (
-                  <div
-                    key={idx}
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: "#1e1e1e",
+                  borderRadius: "16px",
+                  padding: "20px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  color: "#fff",
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div>
+                  <p>
+                    <strong>Airlines:</strong> {f.airlines}
+                  </p>
+                  <p>
+                    <strong>Departure:</strong> {f.departure}
+                  </p>
+                  <p>
+                    <strong>Arrival:</strong> {f.arrival}
+                  </p>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <p
                     style={{
-                      background: "#1e1e1e",
-                      borderRadius: "16px",
-                      padding: "20px",
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                      color: "#fff",
-                      display: "flex",
-                      flexDirection: "row", // lay items side by side
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
+                      fontSize: "1.2rem",
+                      fontWeight: "bold",
+                      color: "#1DB954",
                     }}
                   >
-                    {/* Left section */}
-                    <div>
-                      <p><strong>Airlines:</strong> {f.airlines}</p>
-                      <p><strong>Departure:</strong> {f.departure}</p>
-                      <p><strong>Arrival:</strong> {f.arrival}</p>
-                    </div>
-
-                    {/* Right section (price + meta) */}
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#1DB954" }}>
-                        ${f.price} {f.currency}
-                      </p>
-                      <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                        Duration: {f.duration}
-                      </p>
-                      <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                        Stops: {f.stops}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    ${f.price} {f.currency}
+                  </p>
+                  <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                    Duration: {f.duration}
+                  </p>
+                  <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
+                    Stops: {f.stops}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
