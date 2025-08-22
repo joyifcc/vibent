@@ -184,49 +184,36 @@ const FlightDetails = () => {
   };
 
   useEffect(() => {
-    if (cachedFlights && cachedFlights.length > 0) {
-      setFlights(cachedFlights);
-      setLoading(false);
+    if (!origin || !selectedAirport || !departureDate) {
+      setFlights([]);
       return;
     }
-
-    if (!origin || !destinationAirports?.length || !departureDate) {
-      setError("Missing required flight parameters");
-      setLoading(false);
-      return;
-    }
-
+  
     const fetchFlights = async () => {
       setLoading(true);
       setError(null);
       try {
         const BACKEND_URL =
           process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
-
-        // Compute flexible date range
+  
         const startDate = new Date(departureDate);
         startDate.setDate(startDate.getDate() - daysBefore);
         const endDate = new Date(departureDate);
         endDate.setDate(endDate.getDate() + daysAfter);
         const formatDate = (d) => d.toISOString().split("T")[0];
-
-        let allFlights = [];
-
-        for (const dest of destinationAirports) {
-          const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${dest}&departureDate=${formatDate(
-            startDate
-          )}&returnDate=${formatDate(endDate)}`;
-          const res = await fetch(url);
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Flights API returned ${res.status}: ${text}`);
-          }
-          const json = await res.json();
-          if (json.data?.length > 0) allFlights = allFlights.concat(json.data);
-          await new Promise((r) => setTimeout(r, 100)); // avoid hammering API
+  
+        const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${selectedAirport}&departureDate=${formatDate(
+          startDate
+        )}&returnDate=${formatDate(endDate)}`;
+  
+        const res = await fetch(url);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Flights API returned ${res.status}: ${text}`);
         }
-
-        setFlights(allFlights);
+  
+        const json = await res.json();
+        setFlights(json.data || []);
       } catch (err) {
         setError(err.message);
         setFlights([]);
@@ -234,9 +221,11 @@ const FlightDetails = () => {
         setLoading(false);
       }
     };
-
+  
     fetchFlights();
-  }, [origin, destinationAirports, departureDate, cachedFlights, daysBefore, daysAfter]);
+  }, [origin, selectedAirport, departureDate, daysBefore, daysAfter]);
+  
+
 
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (loading) return <p>Loading flights...</p>;
@@ -303,13 +292,14 @@ const FlightDetails = () => {
             onChange={(e) => setSelectedAirport(e.target.value)}
             style={{ padding: "8px", borderRadius: "8px" }}
           >
-            <option value="">All Airports</option>
+            <option value="">Select Airport</option>
             {airportsForEvent.map((code) => (
               <option key={code} value={code}>
                 {code}
               </option>
             ))}
-          </select>
+        </select>
+        
         )}
 
         <select
