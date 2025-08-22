@@ -205,46 +205,66 @@ const TopArtistsList = ({ topArtists, onShowRelatedArtists, onShowConcerts }) =>
 
 
     // Add this **above** the return() but inside your TopArtistsList component
-          const handleShowFlights = (event) => {
-            if (!originAirport) {
-              alert("Please select your home airport first.");
-              return;
-            }
-
-            // Normalize the state string
-            const normalizedState =
-              event.state?.length === 2
-                ? stateAbbrevToFull[event.state.toUpperCase()] || event.state
-                : toTitleCase(event.state || '');
-
-            // Lookup all airports for that state
-            const destinationAirports = normalizedState
-              ? stateToAirports[normalizedState] || []
-              : [];
-
-            if (!destinationAirports.length) {
-              alert(`No airport codes found for ${event.state}`);
-              return;
-            }
-
-            if (!event.date) {
-              alert("Event date is missing. Cannot show flights.");
-              return;
-            }
-
-            navigate(`/flights/${event.id}`, {
-              state: {
-                origin: originAirport,           // user-selected
-                destinationAirports,             // all airports in concert's state
-                departureDate: event.date,       // concert date
-                daysBefore,                      // user input
-                daysAfter,                       // user input
-                eventState: event.state,
-                eventCountry: event.country,
-              },
-            });
-          };
-
+    const handleShowFlights = (event) => {
+      const missingParams = [];
+    
+      // Check origin
+      if (!originAirport) missingParams.push("originAirport");
+    
+      // Normalize state
+      const normalizedState =
+        event.state?.length === 2
+          ? stateAbbrevToFull[event.state.toUpperCase()] || event.state
+          : toTitleCase(event.state || '');
+    
+      // Lookup destination airports
+      const destinationAirports = normalizedState
+        ? stateToAirports[normalizedState] || []
+        : [];
+      if (!destinationAirports.length) missingParams.push("destinationAirports");
+    
+      // Check departure date
+      if (!event.date) missingParams.push("departureDate");
+    
+      // Check flexible dates
+      if (daysBefore === null || daysBefore === undefined) missingParams.push("daysBefore");
+      if (daysAfter === null || daysAfter === undefined) missingParams.push("daysAfter");
+    
+      // Optional: check event location info
+      if (!event.state) missingParams.push("eventState");
+      if (!event.country) missingParams.push("eventCountry");
+    
+      if (missingParams.length > 0) {
+        console.warn("Missing flight parameters:", missingParams);
+        alert("Missing required flight parameters: " + missingParams.join(", "));
+        return;
+      }
+    
+      // Debug: log all flight parameters
+      console.log("Navigating to FlightDetails with parameters:", {
+        origin: originAirport,
+        destinationAirports,
+        departureDate: event.date,
+        daysBefore,
+        daysAfter,
+        eventState: event.state,
+        eventCountry: event.country,
+      });
+    
+      // All parameters present, navigate to FlightDetails
+      navigate(`/flights/${event.id}`, {
+        state: {
+          origin: originAirport,
+          destinationAirports,
+          departureDate: event.date,
+          daysBefore,
+          daysAfter,
+          eventState: event.state,
+          eventCountry: event.country,
+        },
+      });
+    };
+    
   
   // Flatten and deduplicate airport codes for origin airport dropdown
   const allAirports = [...new Set(Object.values(stateToAirports).flat())];
