@@ -184,14 +184,15 @@ const FlightDetails = () => {
   };
 
   useEffect(() => {
+    // Only fetch if origin, departureDate, AND selectedAirport are all set
     if (!origin || !selectedAirport || !departureDate) {
-      setFlights([]);
-      return;
+      return; // Do nothing until user selects an airport
     }
   
     const fetchFlights = async () => {
       setLoading(true);
       setError(null);
+  
       try {
         const BACKEND_URL =
           process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
@@ -205,6 +206,8 @@ const FlightDetails = () => {
         const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${selectedAirport}&departureDate=${formatDate(
           startDate
         )}&returnDate=${formatDate(endDate)}`;
+  
+        console.log("Fetching flights from:", url); // Debug
   
         const res = await fetch(url);
         if (!res.ok) {
@@ -224,6 +227,7 @@ const FlightDetails = () => {
   
     fetchFlights();
   }, [origin, selectedAirport, departureDate, daysBefore, daysAfter]);
+  
   
 
 
