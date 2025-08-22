@@ -127,8 +127,6 @@ const FlightDetails = () => {
     departureDate,
     flights: cachedFlights,
     eventState,
-    daysBefore = 0,
-    daysAfter = 0,
   } = navState || {};
 
   const [flights, setFlights] = useState(cachedFlights || []);
@@ -151,7 +149,6 @@ const FlightDetails = () => {
     const firstSeg = segments[0];
     const lastSeg = segments[segments.length - 1];
 
-    // Duration calculation: sum of all segment durations (ignore timezone differences)
     const totalDurationMinutes = segments.reduce((sum, seg) => {
       const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
       if (!match) return sum;
@@ -180,6 +177,7 @@ const FlightDetails = () => {
     };
   };
 
+  // --- FIXED FETCH ---
   useEffect(() => {
     if (!origin || !selectedAirport || !departureDate) return;
 
@@ -191,15 +189,8 @@ const FlightDetails = () => {
         const BACKEND_URL =
           process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
 
-        const startDate = new Date(departureDate);
-        startDate.setDate(startDate.getDate() - daysBefore);
-        const endDate = new Date(departureDate);
-        endDate.setDate(endDate.getDate() + daysAfter);
-        const formatDate = (d) => d.toISOString().split("T")[0];
-
-        const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${selectedAirport}&departureDate=${formatDate(
-          startDate
-        )}&returnDate=${formatDate(endDate)}`;
+        // Keep date as YYYY-MM-DD (no timezone conversion)
+        const url = `${BACKEND_URL}/flights?origin=${origin.trim()}&destination=${selectedAirport.trim()}&departureDate=${departureDate}`;
 
         console.log("Fetching flights from:", url);
 
@@ -220,7 +211,7 @@ const FlightDetails = () => {
     };
 
     fetchFlights();
-  }, [origin, selectedAirport, departureDate, daysBefore, daysAfter]);
+  }, [origin, selectedAirport, departureDate]);
 
   // Filter flights
   let filteredFlights = flights
@@ -250,8 +241,7 @@ const FlightDetails = () => {
       <h2 className="title">Flights for Event {eventId}</h2>
 
       {/* Filters + Sort */}
-      <div
-        style={{
+      <div style={{
           display: "flex",
           gap: "16px",
           marginBottom: "20px",
@@ -301,8 +291,7 @@ const FlightDetails = () => {
       {error && <p style={{ color: "red" }}>{error}</p>}
       {!loading && filteredFlights.length === 0 && <p>No flights found.</p>}
 
-      <div
-        style={{
+      <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
           gap: "24px",
@@ -310,9 +299,7 @@ const FlightDetails = () => {
         }}
       >
         {filteredFlights.map((f, idx) => (
-          <div
-            key={idx}
-            style={{
+          <div key={idx} style={{
               background: "#1e1e1e",
               borderRadius: "16px",
               padding: "20px",
@@ -325,33 +312,17 @@ const FlightDetails = () => {
             }}
           >
             <div>
-              <p>
-                <strong>Airlines:</strong> {f.airlines}
-              </p>
-              <p>
-                <strong>Departure:</strong> {f.departure.iata} - {f.departure.time}
-              </p>
-              <p>
-                <strong>Arrival:</strong> {f.arrival.iata} - {f.arrival.time}
-              </p>
+              <p><strong>Airlines:</strong> {f.airlines}</p>
+              <p><strong>Departure:</strong> {f.departure.iata} - {f.departure.time}</p>
+              <p><strong>Arrival:</strong> {f.arrival.iata} - {f.arrival.time}</p>
             </div>
 
             <div style={{ textAlign: "right" }}>
-              <p
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: "bold",
-                  color: "#1DB954",
-                }}
-              >
+              <p style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#1DB954" }}>
                 ${f.price} {f.currency}
               </p>
-              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                Duration: {f.duration}
-              </p>
-              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>
-                Stops: {f.stops}
-              </p>
+              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>Duration: {f.duration}</p>
+              <p style={{ color: "#aaa", fontSize: "0.9rem" }}>Stops: {f.stops}</p>
             </div>
           </div>
         ))}
