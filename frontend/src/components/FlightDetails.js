@@ -123,7 +123,7 @@ const FlightDetails = () => {
   const { state: navState } = useLocation();
   const {
     origin,
-    destination: destinationAirports,
+    destinationAirports,  
     departureDate,
     flights: cachedFlights,
     eventState,
@@ -131,6 +131,7 @@ const FlightDetails = () => {
     daysBefore = 0,
     daysAfter = 0,
   } = navState || {};
+  
 
   const [flights, setFlights] = useState(cachedFlights || []);
   const [loading, setLoading] = useState(!cachedFlights || cachedFlights.length === 0);
