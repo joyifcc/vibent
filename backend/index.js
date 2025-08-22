@@ -300,12 +300,19 @@ app.get('/flights', async (req, res) => {
           id: '1',
           originLocationCode: origin,
           destinationLocationCode: destination,
-          departureDateTimeRange: { date: departureDate }
+          // ✅ Correct structure: departureDateTimeRange needs dateRange or dateTimeRange
+          departureDateTimeRange: { 
+            date: departureDate  // e.g. "2025-08-21"
+          }
         }
       ],
-      travelers: [{ id: '1', travelerType: 'ADULT' }],
+      travelers: [
+        { id: '1', travelerType: 'ADULT' }
+      ],
       sources: ['GDS'],
-      searchCriteria: { maxFlightOffers: 5 }
+      searchCriteria: { 
+        maxFlightOffers: 5 
+      }
     };
 
     const flightsRes = await axios.post(
@@ -319,22 +326,22 @@ app.get('/flights', async (req, res) => {
       }
     );
 
-    console.log('Flights fetched:', flightsRes.data.meta?.count || flightsRes.data?.data?.length || 'unknown');
+    const count = flightsRes.data?.meta?.count ?? flightsRes.data?.data?.length ?? 0;
+    console.log(`Flights fetched: ${count}`);
     res.json(flightsRes.data);
+
   } catch (error) {
     console.error('Error fetching flights:', {
       message: error.message,
       responseData: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers
+      status: error.response?.status
     });
-    res.status(500).json({ 
+    res.status(error.response?.status || 500).json({ 
       error: 'Error fetching flights', 
       details: error.response?.data || error.message 
     });
   }
 });
-
 
 
 app.listen(PORT, () => {
