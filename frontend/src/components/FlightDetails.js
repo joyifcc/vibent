@@ -127,6 +127,7 @@ const FlightDetails = () => {
     departureDate,
     flights: cachedFlights,
     eventState,
+    returnDate,
   } = navState || {};
 
   const [flights, setFlights] = useState(cachedFlights || []);
@@ -179,7 +180,7 @@ const FlightDetails = () => {
 
   // --- FIXED FETCH ---
   useEffect(() => {
-    if (!origin || !selectedAirport || !departureDate) return;
+    if (!origin || !selectedAirport || !departureDate || !returnDate) return;
 
     const fetchFlights = async () => {
       setLoading(true);
@@ -190,7 +191,8 @@ const FlightDetails = () => {
           process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
 
         // Keep date as YYYY-MM-DD (no timezone conversion)
-        const url = `${BACKEND_URL}/flights?origin=${origin.trim()}&destination=${selectedAirport.trim()}&departureDate=${departureDate}`;
+        const url = `${BACKEND_URL}/flights?origin=${origin}&destination=${selectedAirport}&departureDate=${departureDate}&returnDate=${returnDate}`;
+
 
         console.log("Fetching flights from:", url);
 
@@ -211,7 +213,7 @@ const FlightDetails = () => {
     };
 
     fetchFlights();
-  }, [origin, selectedAirport, departureDate]);
+  }, [origin, selectedAirport, departureDate, returnDate]);
 
   // Filter flights
   let filteredFlights = flights
