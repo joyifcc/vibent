@@ -42,7 +42,7 @@ for (const [state, airports] of Object.entries(stateToAirports)) {
 }
 
 // --- Format flight time in local timezone of airport ---
-const formatWithTimezone = (dateTimeStr, airportCode) => {
+const formatWithTimezone = (dateTimeStr, state) => {
   const stateTimezones = {
     "Alabama": "America/Chicago",
     "Alaska": "America/Anchorage",
@@ -97,9 +97,10 @@ const formatWithTimezone = (dateTimeStr, airportCode) => {
     "Wyoming": "America/Denver"
   };
 
-  const state = airportToState[airportCode] || "UTC";
   const timezone = stateTimezones[state] || "UTC";
-  return DateTime.fromISO(dateTimeStr).setZone(timezone).toFormat("MMM dd, yyyy hh:mm a ZZZ");
+  return DateTime.fromISO(dateTimeStr)
+    .setZone(timezone)
+    .toFormat("MMM dd, yyyy hh:mm a z"); // <- `z` gives PST, EST, etc.
 };
 
 // --- Format flight ---
@@ -127,11 +128,17 @@ const formatFlight = (flight) => {
     currency: flight.price?.currency || "USD",
     departure: {
       iata: firstSeg.departure.iataCode,
-      time: formatWithTimezone(firstSeg.departure.at, firstSeg.departure.iataCode)
+      time: formatWithTimezone(
+        firstSeg.departure.at,
+        airportToState[firstSeg.departure.iataCode] || "UTC"
+      )
     },
     arrival: {
       iata: lastSeg.arrival.iataCode,
-      time: formatWithTimezone(lastSeg.arrival.at, lastSeg.arrival.iataCode)
+      time: formatWithTimezone(
+        lastSeg.arrival.at,
+        airportToState[lastSeg.arrival.iataCode] || "UTC"
+      )
     },
     durationMinutes: totalDurationMinutes,
     duration: `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`,
