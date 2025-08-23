@@ -100,7 +100,7 @@ const formatWithTimezone = (dateTimeStr, state) => {
   const timezone = stateTimezones[state] || "UTC";
   return DateTime.fromISO(dateTimeStr)
     .setZone(timezone)
-    .toFormat("MMM dd, yyyy hh:mm a z"); // <- `z` gives PST, EST, etc.
+    .toFormat("MMM dd, yyyy hh:mm a ZZZZ")
 };
 
 // --- Format flight ---
