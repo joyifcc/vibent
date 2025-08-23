@@ -1,4 +1,4 @@
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DateTime } from "luxon";
 
@@ -68,12 +68,13 @@ const formatWithTimezone = (dateTimeStr, state) => {
 
 
 const FlightDetails = () => {
-  const { eventId } = useParams();
   const { state: navState } = useLocation();
   const {
     origin,
     destinationAirports = [],
     departureDate,
+    daysBefore = 0,
+    daysAfter = 0,
     flights: cachedFlights,
     eventState,
   } = navState || {};
@@ -127,40 +128,46 @@ const FlightDetails = () => {
   };
 
   // --- FIXED FETCH ---
-  useEffect(() => {
-    if (!origin || !selectedAirport || !departureDate) return;
 
-    const fetchFlights = async () => {
-      setLoading(true);
-      setError(null);
+useEffect(() => {
+  if (!origin || !selectedAirport || !departureDate) return;
 
-      try {
-        const BACKEND_URL =
-          process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
+  // Adjust the departure date based on daysBefore
+  const adjustedDate = DateTime.fromISO(departureDate)
+    .minus({ days: daysBefore }) // subtract daysBefore
+    .toISODate(); // keep YYYY-MM-DD format
 
-        // Keep date as YYYY-MM-DD (no timezone conversion)
-        const url = `${BACKEND_URL}/flights?origin=${origin.trim()}&destination=${selectedAirport.trim()}&departureDate=${departureDate}`;
+  const fetchFlights = async () => {
+    setLoading(true);
+    setError(null);
 
-        console.log("Fetching flights from:", url);
+    try {
+      const BACKEND_URL =
+        process.env.REACT_APP_BACKEND_URL || "https://vibent-api.onrender.com";
 
-        const res = await fetch(url);
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Flights API returned ${res.status}: ${text}`);
-        }
+      const url = `${BACKEND_URL}/flights?origin=${origin.trim()}&destination=${selectedAirport.trim()}&departureDate=${adjustedDate}`;
 
-        const json = await res.json();
-        setFlights(json.data || []);
-      } catch (err) {
-        setError(err.message);
-        setFlights([]);
-      } finally {
-        setLoading(false);
+      console.log("Fetching flights from:", url);
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Flights API returned ${res.status}: ${text}`);
       }
-    };
 
-    fetchFlights();
-  }, [origin, selectedAirport, departureDate]);
+      const json = await res.json();
+      setFlights(json.data || []);
+    } catch (err) {
+      setError(err.message);
+      setFlights([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchFlights();
+}, [origin, selectedAirport, departureDate, daysBefore]);
+
 
   // Filter flights
   let filteredFlights = flights
@@ -187,7 +194,7 @@ const FlightDetails = () => {
 
   return (
     <div className="top-artists-container">
-      <h2 className="title">Flights for Event {eventId}</h2>
+      <h2 className="title">Departure Flight Search</h2>
 
       {/* Filters + Sort */}
       <div style={{
