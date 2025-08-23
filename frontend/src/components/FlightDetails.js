@@ -1,10 +1,48 @@
 import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { DateTime } from "luxon";
+import stateToAirports from "./StateToAirports";
 
-// Function to format time with timezone
-// Function to format time with timezone
-const formatWithTimezone = (dateTimeStr, state) => {
+const airportToState = {};
+for (const [state, airports] of Object.entries(stateToAirports)) {
+  airports.forEach((code) => {
+    airportToState[code] = state;
+  });
+}
+
+
+const FlightDetails = () => {
+  const { state: navState } = useLocation();
+  const {
+    origin,
+    destinationAirports = [],
+    departureDate,
+    daysBefore = 0,
+    daysAfter = 0,
+    flights: cachedFlights,
+  } = navState || {};
+
+  const [flights, setFlights] = useState(cachedFlights || []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Filters
+  const [maxStops, setMaxStops] = useState("");
+  const [selectedAirport, setSelectedAirport] = useState("");
+
+  // Sort
+  const [sortBy, setSortBy] = useState("");
+
+  // --- Reverse mapping airport -> state ---
+const airportToState = {};
+for (const [state, airports] of Object.entries(stateToAirports)) {
+  airports.forEach((code) => {
+    airportToState[code] = state;
+  });
+}
+
+// --- Format flight time in local timezone of airport ---
+const formatWithTimezone = (dateTimeStr, airportCode) => {
   const stateTimezones = {
     "Alabama": "America/Chicago",
     "Alaska": "America/Anchorage",
@@ -59,83 +97,55 @@ const formatWithTimezone = (dateTimeStr, state) => {
     "Wyoming": "America/Denver"
   };
 
+  const state = airportToState[airportCode] || "UTC";
   const timezone = stateTimezones[state] || "UTC";
-  return DateTime.fromISO(dateTimeStr)
-    .setZone(timezone)
-    .toFormat("MMM dd, yyyy hh:mm a ZZZZ");
+  return DateTime.fromISO(dateTimeStr).setZone(timezone).toFormat("MMM dd, yyyy hh:mm a ZZZ");
 };
 
+// --- Format flight ---
+const formatFlight = (flight) => {
+  const itinerary = flight.itineraries?.[0];
+  if (!itinerary || !itinerary.segments?.length) return null;
 
+  const segments = itinerary.segments;
+  const firstSeg = segments[0];
+  const lastSeg = segments[segments.length - 1];
 
-const FlightDetails = () => {
-  const { state: navState } = useLocation();
-  const {
-    origin,
-    destinationAirports = [],
-    departureDate,
-    daysBefore = 0,
-    daysAfter = 0,
-    flights: cachedFlights,
-    eventState,
-  } = navState || {};
+  const totalDurationMinutes = segments.reduce((sum, seg) => {
+    const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!match) return sum;
+    const hours = parseInt(match[1] || 0);
+    const minutes = parseInt(match[2] || 0);
+    return sum + hours * 60 + minutes;
+  }, 0);
 
-  const [flights, setFlights] = useState(cachedFlights || []);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const airlineCodes = [...new Set(segments.map((seg) => seg.carrierCode))];
 
-  // Filters
-  const [maxStops, setMaxStops] = useState("");
-  const [selectedAirport, setSelectedAirport] = useState("");
-
-  // Sort
-  const [sortBy, setSortBy] = useState("");
-
-  // Format flight for display
-  const formatFlight = (flight) => {
-    const itinerary = flight.itineraries?.[0];
-    if (!itinerary || !itinerary.segments?.length) return null;
-
-    const segments = itinerary.segments;
-    const firstSeg = segments[0];
-    const lastSeg = segments[segments.length - 1];
-
-    const totalDurationMinutes = segments.reduce((sum, seg) => {
-      const match = seg.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-      if (!match) return sum;
-      const hours = parseInt(match[1] || 0);
-      const minutes = parseInt(match[2] || 0);
-      return sum + hours * 60 + minutes;
-    }, 0);
-
-    const airlineCodes = [...new Set(segments.map((seg) => seg.carrierCode))];
-
-    return {
-      airlines: airlineCodes.join(", "),
-      price: parseFloat(flight.price?.total || 0),
-      currency: flight.price?.currency || "USD",
-      departure: {
-        iata: firstSeg.departure.iataCode,
-        time: formatWithTimezone(firstSeg.departure.at, eventState)
-      },
-      arrival: {
-        iata: lastSeg.arrival.iataCode,
-        time: formatWithTimezone(lastSeg.arrival.at, eventState)
-      },
-      durationMinutes: totalDurationMinutes,
-      duration: `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`,
-      stops: segments.length - 1,
-    };
+  return {
+    airlines: airlineCodes.join(", "),
+    price: parseFloat(flight.price?.total || 0),
+    currency: flight.price?.currency || "USD",
+    departure: {
+      iata: firstSeg.departure.iataCode,
+      time: formatWithTimezone(firstSeg.departure.at, firstSeg.departure.iataCode)
+    },
+    arrival: {
+      iata: lastSeg.arrival.iataCode,
+      time: formatWithTimezone(lastSeg.arrival.at, lastSeg.arrival.iataCode)
+    },
+    durationMinutes: totalDurationMinutes,
+    duration: `${Math.floor(totalDurationMinutes / 60)}h ${totalDurationMinutes % 60}m`,
+    stops: segments.length - 1,
   };
+};
 
-  // --- FIXED FETCH ---
-
+// --- Fetch flights ---
 useEffect(() => {
   if (!origin || !selectedAirport || !departureDate) return;
 
-  // Adjust the departure date based on daysBefore
   const adjustedDate = DateTime.fromISO(departureDate)
-    .minus({ days: daysBefore }) // subtract daysBefore
-    .toISODate(); // keep YYYY-MM-DD format
+    .minus({ days: daysBefore })
+    .toISODate();
 
   const fetchFlights = async () => {
     setLoading(true);
@@ -167,6 +177,7 @@ useEffect(() => {
 
   fetchFlights();
 }, [origin, selectedAirport, departureDate, daysBefore]);
+
 
 
   // Filter flights
